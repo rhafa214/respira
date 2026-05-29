@@ -7,6 +7,7 @@ export function useCollection<T>(collectionName: string) {
   const { user } = useAuth();
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -23,8 +24,12 @@ export function useCollection<T>(collectionName: string) {
       });
       setData(results);
       setLoading(false);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, collectionName);
+      setError(null);
+    }, (err) => {
+      console.error(err);
+      setError(err instanceof Error ? err.message : String(err));
+      setLoading(false);
+      handleFirestoreError(err, OperationType.LIST, collectionName);
     });
 
     return () => unsubscribe();
@@ -74,5 +79,5 @@ export function useCollection<T>(collectionName: string) {
     }
   };
 
-  return { data, loading, add, update, remove };
+  return { data, loading, error, add, update, remove };
 }

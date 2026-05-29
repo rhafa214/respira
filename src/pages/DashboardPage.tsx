@@ -10,8 +10,8 @@ import { SeedDataAlert } from "@/components/SeedDataAlert";
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const { data: allTransactions, update: updateTx, loading: txLoading } = useCollection<any>('transactions');
-  const { data: debts, loading: dbLoading } = useCollection<any>('debts');
+  const { data: allTransactions, update: updateTx, loading: txLoading, error: txError } = useCollection<any>('transactions');
+  const { data: debts, loading: dbLoading, error: dbError } = useCollection<any>('debts');
   
   // Start on June 2026
   const [currentDate, setCurrentDate] = useState(new Date("2026-06-08T12:00:00Z"));
@@ -115,6 +115,14 @@ export default function DashboardPage() {
 
   const handleNextMonth = () => setCurrentDate(prev => addMonths(prev, 1));
   const handlePrevMonth = () => setCurrentDate(prev => subMonths(prev, 1));
+
+  if (txError || dbError) {
+    return <div className="p-12 text-center text-red-500">
+      Falha ao carregar seus dados. Isso normalmente acontece quando a configuração do banco não está conectada ou suas regras bloqueiam a leitura.
+      <br/><br/>
+      [{txError || dbError}]
+    </div>;
+  }
 
   if (txLoading || dbLoading) {
     return <div className="p-12 text-center text-slate-500">Sincronizando o mês...</div>;
