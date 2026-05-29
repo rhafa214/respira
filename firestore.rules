@@ -1,0 +1,147 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Phase 3: Primitive Definition
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isSignedIn() { return request.auth != null; }
+    function isVerifiedUser() { return isSignedIn(); }
+
+    function isOwner(userId) {
+      return isVerifiedUser() && request.auth.uid == userId;
+    }
+
+    // Validations
+    function isValidUserCreate(data) {
+      return data.keys().hasAll(['userId', 'email']) 
+        && data.keys().size() <= 4
+        && data.userId == request.auth.uid
+        && data.email is string && data.email.size() > 0 && data.email.size() <= 100
+        && data.get('name', '') is string && data.get('name', '').size() <= 100
+        && data.get('createdAt', '') is string;
+    }
+
+    function isValidUserUpdate(inc, ext) {
+      return inc.userId == ext.userId
+        && inc.email == ext.email
+        && inc.get('name', '') is string && inc.get('name', '').size() <= 100;
+    }
+
+    function isValidTransactionCreate(data) {
+      return data.keys().hasAll(['userId', 'amount', 'type', 'date'])
+        && data.keys().size() <= 10
+        && data.userId == request.auth.uid
+        && data.amount is number
+        && data.type is string && data.type.size() <= 20
+        && data.date is string && data.date.size() <= 30
+        && data.get('category', '') is string && data.get('category', '').size() <= 50
+        && data.get('description', '') is string && data.get('description', '').size() <= 200
+        && data.get('status', '') is string && data.get('status', '').size() <= 20
+        && data.get('isRecurring', false) is bool
+        && data.get('installmentInfo', '') is string && data.get('installmentInfo', '').size() <= 50
+        && data.get('createdAt', '') is string;
+    }
+
+    function isValidTransactionUpdate(inc, ext) {
+      return inc.userId == ext.userId
+        && inc.amount is number
+        && inc.type is string && inc.type.size() <= 20
+        && inc.date is string && inc.date.size() <= 30
+        && inc.get('category', '') is string && inc.get('category', '').size() <= 50
+        && inc.get('description', '') is string && inc.get('description', '').size() <= 200
+        && inc.get('status', '') is string && inc.get('status', '').size() <= 20
+        && inc.get('isRecurring', false) is bool
+        && inc.get('installmentInfo', '') is string && inc.get('installmentInfo', '').size() <= 50;
+    }
+
+    function isValidDebtCreate(data) {
+      return data.keys().hasAll(['userId', 'bank', 'total', 'remaining'])
+        && data.keys().size() <= 10
+        && data.userId == request.auth.uid
+        && data.bank is string && data.bank.size() <= 50
+        && data.type is string && data.type.size() <= 50
+        && data.total is number
+        && data.remaining is number
+        && data.get('installments', '') is string && data.get('installments', '').size() <= 20
+        && data.get('status', '') is string && data.get('status', '').size() <= 20
+        && data.get('interest', '') is string && data.get('interest', '').size() <= 20
+        && data.get('createdAt', '') is string
+        && data.get('updatedAt', '') is string;
+    }
+
+    function isValidDebtUpdate(inc, ext) {
+      return inc.userId == ext.userId
+        && inc.bank is string && inc.bank.size() <= 50
+        && inc.type is string && inc.type.size() <= 50
+        && inc.total is number
+        && inc.remaining is number
+        && inc.get('installments', '') is string && inc.get('installments', '').size() <= 20
+        && inc.get('status', '') is string && inc.get('status', '').size() <= 20
+        && inc.get('interest', '') is string && inc.get('interest', '').size() <= 20
+        && inc.get('updatedAt', '') is string;
+    }
+
+    function isValidGoalCreate(data) {
+      return data.keys().hasAll(['userId', 'title', 'target', 'current'])
+        && data.keys().size() <= 7
+        && data.userId == request.auth.uid
+        && data.title is string && data.title.size() <= 100
+        && data.target is number
+        && data.current is number
+        && data.get('label', '') is string && data.get('label', '').size() <= 50
+        && data.get('createdAt', '') is string
+        && data.get('updatedAt', '') is string;
+    }
+
+    function isValidGoalUpdate(inc, ext) {
+      return inc.userId == ext.userId
+        && inc.title is string && inc.title.size() <= 100
+        && inc.target is number
+        && inc.current is number
+        && inc.get('label', '') is string && inc.get('label', '').size() <= 50
+        && inc.get('updatedAt', '') is string;
+    }
+
+    // Collections
+    
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow list: if isVerifiedUser() && resource.data.userId == request.auth.uid;
+      allow create: if isValidId(userId) && isOwner(userId) && isValidUserCreate(incoming());
+      allow update: if isValidId(userId) && isOwner(userId) && isValidUserUpdate(incoming(), existing()) && incoming().diff(existing()).affectedKeys().hasOnly(['name']);
+      allow delete: if false; // Soft delete instead of hard delete
+    }
+
+    match /transactions/{transactionId} {
+      allow get: if isValidId(transactionId) && isOwner(existing().userId);
+      allow list: if isVerifiedUser() && resource.data.userId == request.auth.uid;
+      allow create: if isVerifiedUser() && isValidTransactionCreate(incoming());
+      allow update: if isValidId(transactionId) && isOwner(existing().userId) && isValidTransactionUpdate(incoming(), existing()) && incoming().diff(existing()).affectedKeys().hasOnly(['amount', 'category', 'date', 'type', 'description', 'status', 'isRecurring', 'installmentInfo']);
+      allow delete: if isValidId(transactionId) && isOwner(existing().userId);
+    }
+    
+    match /debts/{debtId} {
+      allow get: if isValidId(debtId) && isOwner(existing().userId);
+      allow list: if isVerifiedUser() && resource.data.userId == request.auth.uid;
+      allow create: if isVerifiedUser() && isValidDebtCreate(incoming());
+      allow update: if isValidId(debtId) && isOwner(existing().userId) && isValidDebtUpdate(incoming(), existing()) && incoming().diff(existing()).affectedKeys().hasOnly(['bank', 'type', 'total', 'remaining', 'installments', 'status', 'interest', 'updatedAt']);
+      allow delete: if isValidId(debtId) && isOwner(existing().userId);
+    }
+
+    match /goals/{goalId} {
+      allow get: if isValidId(goalId) && isOwner(existing().userId);
+      allow list: if isVerifiedUser() && resource.data.userId == request.auth.uid;
+      allow create: if isVerifiedUser() && isValidGoalCreate(incoming());
+      allow update: if isValidId(goalId) && isOwner(existing().userId) && isValidGoalUpdate(incoming(), existing()) && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'target', 'current', 'label', 'updatedAt']);
+      allow delete: if isValidId(goalId) && isOwner(existing().userId);
+    }
+  }
+}
