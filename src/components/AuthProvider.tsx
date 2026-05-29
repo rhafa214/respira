@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { User, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut as firebaseSignOut } from 'firebase/auth';
+import { User, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { doc, getDocFromServer, setDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '@/lib/firebase';
@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (!userDoc || !userDoc.exists()) {
             await setDoc(userDocRef, {
               userId: u.uid,
-              name: u.displayName || 'Usuário',
+              name: u.displayName || 'Família',
               email: u.email,
               createdAt: new Date().toISOString()
             });
@@ -67,8 +67,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async () => {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    const email = "familia@copiloto.app";
+    const password = "familia-copiloto-2026";
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (e: any) {
+      if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential') {
+        try {
+          await createUserWithEmailAndPassword(auth, email, password);
+        } catch(createErr) {
+          console.error("Failed to create shared account:", createErr);
+        }
+      } else {
+        console.error("Login failed:", e);
+      }
+    }
   };
 
   const signOut = async () => {
@@ -83,3 +96,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 }
 
 export const useAuth = () => useContext(AuthContext);
+

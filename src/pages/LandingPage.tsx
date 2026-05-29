@@ -1,14 +1,22 @@
 import { Link, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Heart, ShieldCheck, Sparkles, LayoutDashboard, Target } from "lucide-react";
+import { Heart, ShieldCheck, Sparkles, LayoutDashboard, Target, Loader2 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
+import { useState } from "react";
 
 export default function LandingPage() {
   const { user, signIn } = useAuth();
+  const [isSigningIn, setIsSigningIn] = useState(false);
   
   if (user) {
     return <Navigate to="/app" replace />;
   }
+
+  const handleSignIn = async () => {
+    setIsSigningIn(true);
+    await signIn();
+    // It will automatically navigate away due to the user check above once auth state resolves
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans">
@@ -21,10 +29,10 @@ export default function LandingPage() {
           <span className="font-bold text-xl tracking-tight text-slate-800">Respira</span>
         </div>
         <div className="flex items-center gap-4">
-          <button onClick={signIn} className="hidden sm:block text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">
-            Entrar
-          </button>
-          <Button onClick={signIn} className="rounded-full shadow-sm hover:shadow-md transition-all">Começar agora</Button>
+          <Button onClick={handleSignIn} disabled={isSigningIn} className="rounded-full shadow-sm hover:shadow-md transition-all">
+            {isSigningIn ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+            {isSigningIn ? "Acessando..." : "Acessar Família"}
+          </Button>
         </div>
       </nav>
 
@@ -32,19 +40,20 @@ export default function LandingPage() {
       <section className="pt-32 pb-20 md:pt-48 md:pb-32 px-6 max-w-6xl mx-auto text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-sm font-medium mb-8">
           <Sparkles className="w-4 h-4" />
-          Seu novo companheiro financeiro
+          Para uso pessoal e familiar
         </div>
         <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-slate-900 max-w-4xl mx-auto leading-[1.1]">
           Organize sua vida financeira sem <span className="text-emerald-500">planilhas complicadas.</span>
         </h1>
         <p className="mt-8 text-xl text-slate-500 max-w-2xl mx-auto leading-relaxed">
-          Nós sabemos que lidar com dívidas cansa. O Respira foi criado para te dar clareza, reduzir a ansiedade e te ajudar a construir o futuro que você merece.
+          Nós sabemos que lidar com dívidas cansa. O Respira foi criado para te dar clareza, reduzir a ansiedade e te ajudar a construir o futuro que vocês merecem.
         </p>
         <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Button onClick={signIn} size="lg" className="rounded-full w-full sm:w-auto text-base h-14 px-8 shadow-lg shadow-emerald-500/20">
-            Recuperar o controle
+          <Button onClick={handleSignIn} disabled={isSigningIn} size="lg" className="rounded-full w-full sm:w-auto text-base h-14 px-8 shadow-lg shadow-emerald-500/20">
+            {isSigningIn ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : null}
+            {isSigningIn ? "Entrando no sistema..." : "Acessar Sistema Família"}
           </Button>
-          <p className="text-sm text-slate-400 sm:ml-4">100% gratuito para começar.</p>
+          <p className="text-sm text-slate-400 sm:ml-4">Acesso direto e seguro.</p>
         </div>
 
         {/* Hero Image Mockup (Abstracted) */}
