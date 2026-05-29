@@ -3,10 +3,11 @@ import { format, addMonths, subMonths, startOfMonth, endOfMonth, isSameMonth, pa
 import { ptBR } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowUpRight, ArrowDownRight, CreditCard, Sparkles, ChevronLeft, ChevronRight, CheckCircle2, Clock, AlertCircle, ShieldAlert } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, CreditCard, Sparkles, ChevronLeft, ChevronRight, CheckCircle2, Clock, AlertCircle, ShieldAlert, Target } from "lucide-react";
 import { useCollection } from "@/hooks/useFirestore";
 import { useAuth } from "@/components/AuthProvider";
 import { SeedDataAlert } from "@/components/SeedDataAlert";
+import { BarChart, Bar, ResponsiveContainer, Tooltip, XAxis, Cell } from "recharts";
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -30,9 +31,10 @@ export default function DashboardPage() {
     progressPercentage,
     riskLabel,
     riskColor,
-    riskBg
+    riskBg,
+    chartData
   } = useMemo(() => {
-    if (!allTransactions) return { monthTransactions: [], grossIncome: 0, automaticDeductions: 0, realIncome: 0, totalExpense: 0, totalPaid: 0, totalPending: 0, realBalance: 0, progressPercentage: 0, riskLabel: "Calculando...", riskColor: "text-slate-500", riskBg: "bg-slate-50" };
+    if (!allTransactions) return { monthTransactions: [], grossIncome: 0, automaticDeductions: 0, realIncome: 0, totalExpense: 0, totalPaid: 0, totalPending: 0, realBalance: 0, progressPercentage: 0, riskLabel: "Calculando...", riskColor: "text-slate-500", riskBg: "bg-slate-50", chartData: [] };
     
     // Filter by current month
     const currentMonthTxs = allTransactions.filter(t => {
@@ -70,6 +72,25 @@ export default function DashboardPage() {
     const realBalance = realInc - expAll; 
     const progress = expAll > 0 ? Math.round((expPaid / expAll) * 100) : 0;
 
+    // Build chart data for the last 6 months
+    const last6Months = Array.from({length: 6}).map((_, i) => subMonths(currentDate, 5 - i));
+    const chartData = last6Months.map(d => {
+      const monthStr = format(d, "yyyy-MM");
+      const monthTxs = allTransactions.filter(t => t.date.substring(0, 7) === monthStr);
+      let mInc = 0; let mExp = 0; let mAuto = 0;
+      monthTxs.forEach(t => {
+        const amt = Number(t.amount);
+        if (t.type === 'income') mInc += amt;
+        else if (t.type === 'deduction') mAuto += amt;
+        else if (t.type === 'expense') mExp += amt;
+      });
+      const mReal = (mInc - mAuto) - mExp;
+      return {
+        name: format(d, "MMM", { locale: ptBR }).substring(0, 3).toUpperCase(),
+        saldo: mReal
+      };
+    });
+
     let rLabel = "Estável (Sob Controle)";
     let rColor = "text-emerald-600";
     let rBg = "bg-emerald-50 text-emerald-600";
@@ -102,7 +123,8 @@ export default function DashboardPage() {
       progressPercentage: progress,
       riskLabel: rLabel,
       riskColor: rColor,
-      riskBg: rBg
+      riskBg: rBg,
+      chartData
     };
   }, [allTransactions, currentDate]);
 
@@ -162,6 +184,64 @@ export default function DashboardPage() {
           </Button>
         </div>
       </div>
+
+      {/* Target/Remaining Limit Indicator */}
+      <Card className={`border-none shadow-sm ${realBalance >= 0 ? 'bg-emerald-50' : 'bg-rose-50'}`}>
+         <CardContent className="p-4 sm:p-5 flex items-center gap-4">
+            <div className={`p-3 rounded-2xl shrink-0 ${realBalance >= 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
+               <Target className="w-6 h-6" />
+            </div>
+            <div>
+               <p className={`text-sm font-semibold uppercase tracking-wider ${realBalance >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                  {realBalance >= 0 ? 'Limite Mensal' : 'Alerta de Limite'}
+               </p>
+               <h2 className={`text-xl sm:text-2xl font-bold mt-1 ${realBalance >= 0 ? 'text-emerald-900' : 'text-rose-900'}`}>
+                  {realBalance >= 0 
+                    ? `Faltam ${formatCurrency(realBalance)} para atingir seu limite do mês.`
+                    : `Você ultrapassou seu limite em ${formatCurrency(Math.abs(realBalance))}.`}
+               </h2>
+            </div>
+         </CardContent>
+      </Card>
+
+      {/* Evolution Chart */}
+      <Card className="border-slate-200 shadow-sm overflow-hidden bg-white">
+         <CardContent className="p-5">
+            <h3 className="font-semibold text-slate-800 text-sm mb-4">Evolução do Saldo (Últimos 6 meses)</h3>
+            <div className="h-40 w-full mt-2">
+               <ResponsiveContainer width="100%" height="100%">
+                 <BarChart data={chartData} margin={{ top: 0, left: -20, right: 0, bottom: 0 }}>
+                   <XAxis 
+                     dataKey="name" 
+                     axisLine={false} 
+                     tickLine={false} 
+                     tick={{ fontSize: 12, fill: '#94a3b8' }} 
+                     dy={10} 
+                   />
+                   <Tooltip 
+                     cursor={{ fill: 'transparent' }}
+                     content={({ active, payload }) => {
+                       if (active && payload && payload.length) {
+                         const val = Number(payload[0].value);
+                         return (
+                           <div className="bg-slate-900 text-white text-xs py-1 px-2 rounded-md shadow-xl border-none">
+                             {formatCurrency(val)}
+                           </div>
+                         );
+                       }
+                       return null;
+                     }} 
+                   />
+                   <Bar dataKey="saldo" radius={[4, 4, 4, 4]}>
+                     {chartData.map((entry, index) => (
+                       <Cell key={`cell-${index}`} fill={entry.saldo >= 0 ? '#10b981' : '#f43f5e'} opacity={index === chartData.length - 1 ? 1 : 0.4} />
+                     ))}
+                   </Bar>
+                 </BarChart>
+               </ResponsiveContainer>
+            </div>
+         </CardContent>
+      </Card>
 
       {/* Month Dashboard Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
