@@ -1,7 +1,8 @@
 import { createContext, useContext, useState, useRef, useEffect, ReactNode } from "react";
 import { GoogleGenAI, Type } from "@google/genai";
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, deleteDoc } from "firebase/firestore";
-import { db, auth } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
+import { useAuth } from "./AuthProvider";
 
 type Message = { role: "user" | "model"; text: string };
 
@@ -19,6 +20,7 @@ interface ChatContextType {
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export function ChatProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { role: "model", text: "Olá! Sou seu Copiloto Financeiro. Diga 'Paguei a internet' ou pergunte 'Qual minha margem real e previsões do mês?'" }
@@ -29,13 +31,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const toggleChat = () => setIsOpen(p => !p);
 
   const sendMessage = async (userMessage: string) => {
-    if (!userMessage.trim() || !auth.currentUser) return;
+    if (!userMessage.trim() || !user) return;
 
     setMessages(prev => [...prev, { role: "user", text: userMessage }]);
     setLoading(true);
 
     try {
-      const uid = auth.currentUser.uid;
+      const uid = user.uid;
       
       // Get all current context
       const transactionsSnap = await getDocs(query(collection(db, "transactions"), where("userId", "==", uid)));

@@ -12,18 +12,17 @@ service cloud.firestore {
     }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
-    function isSignedIn() { return request.auth != null; }
-    function isVerifiedUser() { return isSignedIn(); }
+    function isSignedIn() { return true; }
+    function isVerifiedUser() { return true; }
 
     function isOwner(userId) {
-      return isVerifiedUser() && request.auth.uid == userId;
+      return true;
     }
 
     // Validations
     function isValidUserCreate(data) {
       return data.keys().hasAll(['userId', 'email']) 
         && data.keys().size() <= 4
-        && data.userId == request.auth.uid
         && data.email is string && data.email.size() > 0 && data.email.size() <= 100
         && data.get('name', '') is string && data.get('name', '').size() <= 100
         && data.get('createdAt', '') is string;
@@ -38,7 +37,6 @@ service cloud.firestore {
     function isValidTransactionCreate(data) {
       return data.keys().hasAll(['userId', 'amount', 'type', 'date'])
         && data.keys().size() <= 10
-        && data.userId == request.auth.uid
         && data.amount is number
         && data.type is string && data.type.size() <= 20
         && data.date is string && data.date.size() <= 30
@@ -65,7 +63,6 @@ service cloud.firestore {
     function isValidDebtCreate(data) {
       return data.keys().hasAll(['userId', 'bank', 'total', 'remaining'])
         && data.keys().size() <= 10
-        && data.userId == request.auth.uid
         && data.bank is string && data.bank.size() <= 50
         && data.type is string && data.type.size() <= 50
         && data.total is number
@@ -92,7 +89,6 @@ service cloud.firestore {
     function isValidGoalCreate(data) {
       return data.keys().hasAll(['userId', 'title', 'target', 'current'])
         && data.keys().size() <= 7
-        && data.userId == request.auth.uid
         && data.title is string && data.title.size() <= 100
         && data.target is number
         && data.current is number
@@ -114,7 +110,7 @@ service cloud.firestore {
     
     match /users/{userId} {
       allow get: if isValidId(userId) && isOwner(userId);
-      allow list: if isVerifiedUser() && resource.data.userId == request.auth.uid;
+      allow list: if isVerifiedUser();
       allow create: if isValidId(userId) && isOwner(userId) && isValidUserCreate(incoming());
       allow update: if isValidId(userId) && isOwner(userId) && isValidUserUpdate(incoming(), existing()) && incoming().diff(existing()).affectedKeys().hasOnly(['name']);
       allow delete: if false; // Soft delete instead of hard delete
@@ -122,7 +118,7 @@ service cloud.firestore {
 
     match /transactions/{transactionId} {
       allow get: if isValidId(transactionId) && isOwner(existing().userId);
-      allow list: if isVerifiedUser() && resource.data.userId == request.auth.uid;
+      allow list: if isVerifiedUser();
       allow create: if isVerifiedUser() && isValidTransactionCreate(incoming());
       allow update: if isValidId(transactionId) && isOwner(existing().userId) && isValidTransactionUpdate(incoming(), existing()) && incoming().diff(existing()).affectedKeys().hasOnly(['amount', 'category', 'date', 'type', 'description', 'status', 'isRecurring', 'installmentInfo']);
       allow delete: if isValidId(transactionId) && isOwner(existing().userId);
@@ -130,7 +126,7 @@ service cloud.firestore {
     
     match /debts/{debtId} {
       allow get: if isValidId(debtId) && isOwner(existing().userId);
-      allow list: if isVerifiedUser() && resource.data.userId == request.auth.uid;
+      allow list: if isVerifiedUser();
       allow create: if isVerifiedUser() && isValidDebtCreate(incoming());
       allow update: if isValidId(debtId) && isOwner(existing().userId) && isValidDebtUpdate(incoming(), existing()) && incoming().diff(existing()).affectedKeys().hasOnly(['bank', 'type', 'total', 'remaining', 'installments', 'status', 'interest', 'updatedAt']);
       allow delete: if isValidId(debtId) && isOwner(existing().userId);
@@ -138,7 +134,7 @@ service cloud.firestore {
 
     match /goals/{goalId} {
       allow get: if isValidId(goalId) && isOwner(existing().userId);
-      allow list: if isVerifiedUser() && resource.data.userId == request.auth.uid;
+      allow list: if isVerifiedUser();
       allow create: if isVerifiedUser() && isValidGoalCreate(incoming());
       allow update: if isValidId(goalId) && isOwner(existing().userId) && isValidGoalUpdate(incoming(), existing()) && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'target', 'current', 'label', 'updatedAt']);
       allow delete: if isValidId(goalId) && isOwner(existing().userId);

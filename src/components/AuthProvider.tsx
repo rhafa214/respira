@@ -1,11 +1,11 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { User, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
-import { doc, getDocFromServer, setDoc } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '@/lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
+const FAKE_UID = "familia-compartilhada-2026";
 
 interface AuthContextType {
-  user: User | null;
+  user: any | null;
   loading: boolean;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -19,73 +19,44 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Test connection
-    const testConnection = async () => {
-      try {
-        await getDocFromServer(doc(db, 'test', 'connection'));
-      } catch (error) {
-        if(error instanceof Error && error.message.includes('the client is offline')) {
-          console.error("Please check your Firebase configuration.");
-        }
-      }
-    };
-    testConnection();
-
-    const unsubscribe = onAuthStateChanged(auth, async (u) => {
-      if (u) {
-        // Automatically create user profile if it doesn't exist
-        try {
-          const userDocRef = doc(db, 'users', u.uid);
-          const userDoc = await getDocFromServer(userDocRef).catch(err => {
-            if (err.code !== 'permission-denied') {
-              handleFirestoreError(err, OperationType.GET, `users/${u.uid}`);
-            }
-            return null;
-          });
-          
-          if (!userDoc || !userDoc.exists()) {
-            await setDoc(userDocRef, {
-              userId: u.uid,
-              name: u.displayName || 'Família',
-              email: u.email,
-              createdAt: new Date().toISOString()
-            });
-          }
-        } catch (e) {
-            console.error('Error auto-provisioning user:', e);
-        }
-      }
-      setUser(u);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
+    // Check local storage for persistent shared family login
+    const saved = localStorage.getItem("family_login");
+    if (saved) {
+      setUser({ uid: FAKE_UID, email: "familia@copiloto.app", displayName: "Família" });
+    }
+    setLoading(false);
   }, []);
 
-  const signIn = async () => {
-    const email = "familia@copiloto.app";
-    const password = "familia-copiloto-2026";
+  const autoProvisionUser = async () => {
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-    } catch (e: any) {
-      if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential') {
-        try {
-          await createUserWithEmailAndPassword(auth, email, password);
-        } catch(createErr) {
-          console.error("Failed to create shared account:", createErr);
-        }
-      } else {
-        console.error("Login failed:", e);
+      const userDocRef = doc(db, 'users', FAKE_UID);
+      const userDoc = await getDoc(userDocRef);
+      if (!userDoc.exists()) {
+        await setDoc(userDocRef, {
+          userId: FAKE_UID,
+          name: 'Família',
+          email: "familia@copiloto.app",
+          createdAt: new Date().toISOString()
+        });
       }
+    } catch (e) {
+      console.error('Error auto-provisioning user:', e);
     }
   };
 
+  const signIn = async () => {
+    localStorage.setItem("family_login", "true");
+    setUser({ uid: FAKE_UID, email: "familia@copiloto.app", displayName: "Família" });
+    await autoProvisionUser();
+  };
+
   const signOut = async () => {
-    await firebaseSignOut(auth);
+    localStorage.removeItem("family_login");
+    setUser(null);
   };
 
   return (
