@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { GoogleGenAI } from "@google/genai";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { GoogleGenAI, Type, FunctionDeclaration } from "@google/genai";
+import { collection, query, where, getDocs, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
@@ -48,18 +48,68 @@ export default function AssistantPage() {
 
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const promptContext = `${contextStr}\nPergunta do usuário: "${userMessage}"`;
-      
-      const response = await ai.models.generateContent({
+
+      const addTransactionDeclaration: FunctionDeclaration = {
+        name: "addTransaction",
+        description: "Adiciona uma nova transação (gasto ou ganho) ao banco de dados financeiro do usuário.",
+        parameters: {
+          type: Type.OBJECT,
+          properties: {
+            amount: { type: Type.NUMBER, description: "O valor da transação em Reais (positivo, ex: 54)." },
+            category: { type: Type.STRING, description: "A categoria (ex: 'Mercado', 'Gasolina', 'Salário', 'Lazer')." },
+            type: { type: Type.STRING, description: "'expense' para gastos ou 'income' para ganhos." },
+            date: { type: Type.STRING, description: "A data no formato 'YYYY-MM-DDT12:00:00Z'. Tente deduzir a data correta para 'hoje'." },
+            description: { type: Type.STRING, description: "Descrição opcional." }
+          },
+          required: ["amount", "category", "type", "date"]
+        }
+      };
+
+      const aiResponse = await ai.models.generateContent({
         model: "gemini-3.1-pro-preview",
         contents: promptContext,
         config: {
-          systemInstruction: "Você é o 'Consultor IA', especialista financeiro no Brasil focado em recuperação, estabilidade e saúde mental. DIRETRIZES: 1) O usuário possui alta pressão financeira, margem mensal extremamente sufocada (totalmente comprometida) e zero reserva. 2) Foco em estabilidade, sobrevivência financeira e orientar prioridades lógicas de pagamento do mês. 3) CUIDADO COM A CULPA: Evite culpa excessiva, aja com extrema empatia. O usuário está lutando para sobreviver. 4) Destaque que pequenas vitórias são progressos reais. 5) Incentive o uso da 'Verba de Respiro' (R$ 130) para o lazer controlado e consciente, mantendo a sanidade do usuário, isso NÃO é irresponsabilidade. 6) Alerte de forma calma que Julho será mais difícil devido à entrada do Empréstimo BB 3 (R$ 448). Seja direto, como um conselheiro parceiro e calmo. Sem formatação markdown exaustiva.",
+          systemInstruction: "Você é o 'Consultor IA', especialista financeiro. Você pode responder perguntas e também ajudar o usuário a registrar transações. Se o usuário disser que gastou com algo, chame a função addTransaction para registrar. 1) O usuário possui alta pressão financeira. 2) CUIDADO COM A CULPA: Evite culpa excessiva. 3) Seja conciso e direto. 4) Use as funções quando apropriado, e depois forneça uma breve confirmação ou encorajamento. Hoje é: " + new Date().toISOString(),
           temperature: 0.7,
+          tools: [{ functionDeclarations: [addTransactionDeclaration] }]
         }
       });
       
-      if (response.text) {
-         setMessages(prev => [...prev, { role: "model", text: response.text! }]);
+      let finalMessage = aiResponse.text || "";
+      
+      const functionCalls = aiResponse.functionCalls;
+      if (functionCalls && functionCalls.length > 0) {
+        let addedCount = 0;
+        for (const call of functionCalls) {
+          if (call.name === 'addTransaction') {
+            const args = call.args as any;
+            try {
+              await addDoc(collection(db, "transactions"), {
+                amount: args.amount,
+                category: args.category,
+                type: args.type,
+                date: args.date,
+                description: args.description || "",
+                userId: uid,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              });
+              addedCount++;
+            } catch (err) {
+              console.error("Falha ao adicionar transação:", err);
+            }
+          }
+        }
+        
+        if (addedCount > 0 && !finalMessage) {
+           finalMessage = `Pronto! Registrei ${addedCount > 1 ? 'as transações' : 'a transação'} pra você. Tudo certo.`;
+        } else if (addedCount > 0 && finalMessage) {
+           // We keep the original generated message
+        }
+      }
+
+      if (finalMessage) {
+         setMessages(prev => [...prev, { role: "model", text: finalMessage }]);
       }
     } catch (e) {
       console.error(e);
