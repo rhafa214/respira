@@ -1,21 +1,28 @@
 import { Link, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Heart, ShieldCheck, Sparkles, LayoutDashboard, Target, Loader2 } from "lucide-react";
+import { Heart, ShieldCheck, Sparkles, LayoutDashboard, Target, Loader2, X, Lock } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { useState } from "react";
 
 export default function LandingPage() {
   const { user, signIn } = useAuth();
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pin, setPin] = useState("");
+  const [pinError, setPinError] = useState("");
   
   if (user) {
     return <Navigate to="/app" replace />;
   }
 
   const handleSignIn = async () => {
-    setIsSigningIn(true);
-    await signIn();
-    // It will automatically navigate away due to the user check above once auth state resolves
+    if (pin === "010917") {
+      setIsSigningIn(true);
+      setPinError("");
+      await signIn();
+    } else {
+      setPinError("PIN incorreto.");
+    }
   };
 
   return (
@@ -29,9 +36,9 @@ export default function LandingPage() {
           <span className="font-bold text-xl tracking-tight text-slate-800">Respira</span>
         </div>
         <div className="flex items-center gap-4">
-          <Button onClick={handleSignIn} disabled={isSigningIn} className="rounded-full shadow-sm hover:shadow-md transition-all">
-            {isSigningIn ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-            {isSigningIn ? "Acessando..." : "Acessar Família"}
+          <Button onClick={() => setShowPinModal(true)} className="rounded-full shadow-sm hover:shadow-md transition-all">
+            <Lock className="w-4 h-4 mr-2" />
+            Acessar Família
           </Button>
         </div>
       </nav>
@@ -49,9 +56,9 @@ export default function LandingPage() {
           Nós sabemos que lidar com dívidas cansa. O Respira foi criado para te dar clareza, reduzir a ansiedade e te ajudar a construir o futuro que vocês merecem.
         </p>
         <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Button onClick={handleSignIn} disabled={isSigningIn} size="lg" className="rounded-full w-full sm:w-auto text-base h-14 px-8 shadow-lg shadow-emerald-500/20">
-            {isSigningIn ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : null}
-            {isSigningIn ? "Entrando no sistema..." : "Acessar Sistema Família"}
+          <Button onClick={() => setShowPinModal(true)} size="lg" className="rounded-full w-full sm:w-auto text-base h-14 px-8 shadow-lg shadow-emerald-500/20">
+            <Lock className="w-5 h-5 mr-2" />
+            Acessar Sistema Família
           </Button>
           <p className="text-sm text-slate-400 sm:ml-4">Acesso direto e seguro.</p>
         </div>
@@ -110,6 +117,54 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* PIN Modal Overlay */}
+      {showPinModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl relative animate-in zoom-in-95 duration-200">
+            <button 
+              onClick={() => {
+                setShowPinModal(false);
+                setPin("");
+                setPinError("");
+              }} 
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 bg-slate-100/50 hover:bg-slate-100 p-2 rounded-full transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="flex justify-center mb-6">
+               <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-500">
+                  <Lock className="w-8 h-8" />
+               </div>
+            </div>
+            <h3 className="text-2xl font-bold text-center text-slate-900 mb-2">Acesso Seguro</h3>
+            <p className="text-slate-500 mb-6 text-center text-sm">Digite o PIN da família para acessar o painel financeiro.</p>
+            
+            <form onSubmit={(e) => { e.preventDefault(); handleSignIn(); }}>
+              <input
+                 type="password"
+                 maxLength={6}
+                 value={pin}
+                 onChange={e => { setPin(e.target.value); setPinError(""); }}
+                 className="w-full text-center text-4xl tracking-[0.2em] font-mono p-4 border rounded-xl mb-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium text-slate-700"
+                 placeholder="******"
+                 autoFocus
+              />
+              <div className="h-6 mb-4 flex items-center justify-center">
+                {pinError ? (
+                   <p className="text-rose-500 text-sm font-medium">{pinError}</p>
+                ) : (
+                   <p className="text-slate-400 text-xs">PIN numérico de 6 dígitos</p>
+                )}
+              </div>
+              
+              <Button type="submit" disabled={isSigningIn || pin.length < 6} className="w-full h-12 rounded-xl text-base shadow-md">
+                {isSigningIn ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : "Desbloquear Acesso"}
+              </Button>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );
