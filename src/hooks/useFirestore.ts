@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot, DocumentData, getDocs, addDoc, updateDoc, deleteDoc, doc, Timestamp, orderBy } from 'firebase/firestore';
-import { db, auth, handleFirestoreError, OperationType } from '@/lib/firebase';
+import { db, handleFirestoreError, OperationType } from '@/lib/firebase';
+import { useAuth } from '@/components/AuthProvider';
 
 export function useCollection<T>(collectionName: string) {
+  const { user } = useAuth();
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!auth.currentUser) return;
+    if (!user) return;
     
     const q = query(
       collection(db, collectionName),
-      where("userId", "==", auth.currentUser.uid)
+      where("userId", "==", user.uid)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -26,15 +28,15 @@ export function useCollection<T>(collectionName: string) {
     });
 
     return () => unsubscribe();
-  }, [collectionName]);
+  }, [collectionName, user]);
 
   const add = async (item: Omit<T, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
-    if (!auth.currentUser) return null;
+    if (!user) return null;
     try {
       const now = new Date().toISOString();
       let payload: any = {
         ...item,
-        userId: auth.currentUser.uid,
+        userId: user.uid,
       };
       
       if (collectionName === 'debts' || collectionName === 'goals') {

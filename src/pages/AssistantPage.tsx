@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { GoogleGenAI } from "@google/genai";
 import { collection, query, where, getDocs } from "firebase/firestore";
-import { db, auth } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
+import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,6 +10,7 @@ import { Sparkles, Send, Loader2, Bot, User } from "lucide-react";
 import Markdown from "react-markdown";
 
 export default function AssistantPage() {
+  const { user } = useAuth();
   const [messages, setMessages] = useState<{ role: "model" | "user", text: string }[]>([
     { role: "model", text: "Olá! Sou sua assistente financeira pessoal. Como posso te ajudar a organizar suas contas ou quitar suas dívidas hoje?" }
   ]);
@@ -21,7 +23,7 @@ export default function AssistantPage() {
   }, [messages, loading]);
 
   const handleSend = async () => {
-    if (!input.trim() || !auth.currentUser) return;
+    if (!input.trim() || !user) return;
 
     const userMessage = input.trim();
     setInput("");
@@ -30,7 +32,7 @@ export default function AssistantPage() {
 
     try {
       // Fetch user data context
-      const uid = auth.currentUser.uid;
+      const uid = user.uid;
       const transactionsSnap = await getDocs(query(collection(db, "transactions"), where("userId", "==", uid)));
       const debtsSnap = await getDocs(query(collection(db, "debts"), where("userId", "==", uid)));
       const goalsSnap = await getDocs(query(collection(db, "goals"), where("userId", "==", uid)));
