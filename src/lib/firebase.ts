@@ -6,10 +6,11 @@ import firebaseConfig from '../../firebase-applet-config.json';
 const app = initializeApp(firebaseConfig);
 // CRITICAL: The app will break without specifying the database ID as below
 // We use initializeFirestore with experimentalForceLongPolling because some browsers/ad-blockers block WebSockets
-export const db = initializeFirestore(app, {
-  ...firebaseConfig.firestoreDatabaseId ? { databaseId: firebaseConfig.firestoreDatabaseId } : {},
-  experimentalForceLongPolling: true
-});
+export const db = initializeFirestore(
+  app,
+  { experimentalForceLongPolling: true },
+  firebaseConfig.firestoreDatabaseId
+);
 export const auth = getAuth(app);
 
 export enum OperationType {

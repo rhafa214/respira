@@ -6,6 +6,8 @@ import { Plus, Search, Filter, ShoppingCart, Home, Car, Pill, GraduationCap, Arr
 import { useCollection } from "@/hooks/useFirestore";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { useMonth } from "@/components/MonthContext";
+import { format } from "date-fns";
 
 type Transaction = {
   id?: string;
@@ -17,7 +19,17 @@ type Transaction = {
 };
 
 export default function ExpensesPage() {
-  const { data: transactions, add, loading } = useCollection<Transaction>('transactions');
+  const { currentDate } = useMonth();
+  const { data: allTransactions, add, loading } = useCollection<Transaction>('transactions');
+  
+  // Filter by selected month from context
+  const transactions = allTransactions.filter(t => {
+    if (!t.date) return false;
+    const tMonth = t.date.substring(0, 7);
+    const currMonth = format(currentDate, "yyyy-MM");
+    return tMonth === currMonth;
+  });
+
   const [openDialog, setOpenDialog] = useState(false);
   const [newTx, setNewTx] = useState<Partial<Transaction>>({ type: 'expense', category: 'Alimentação' });
   const [adding, setAdding] = useState(false);
