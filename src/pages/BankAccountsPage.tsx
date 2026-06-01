@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Landmark, CreditCard, Wallet, Link as LinkIcon, RefreshCcw } from "lucide-react";
 import { useCollection } from "@/hooks/useFirestore";
+import { PluggyConnect } from 'react-pluggy-connect';
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
@@ -20,6 +23,7 @@ export default function BankAccountsPage() {
   
   const [openDialog, setOpenDialog] = useState(false);
   const [openFinanceDialog, setOpenFinanceDialog] = useState(false);
+  const [connectToken, setConnectToken] = useState("");
   const [newAccount, setNewAccount] = useState<Partial<BankAccount>>({ type: 'conta_corrente', balance: 0 });
   const [adding, setAdding] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -28,28 +32,77 @@ export default function BankAccountsPage() {
   const handleOpenFinanceSync = async () => {
     setSyncing(true);
     setSyncError("");
+    setConnectToken("");
     try {
-      const response = await fetch("/api/open-finance/token", { method: "POST" });
-      const data = await response.json();
+      const response = await fetch("/api/open-finance/token", { 
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({})
+      });
+      const text = await response.text();
+      
+      let data;
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch (e) {
+        console.error("Failed to parse response:", text);
+        throw new Error(`Resposta API inválida. Talvez o backend esteja reiniciando. Tente de novo.`);
+      }
       
       if (!response.ok) {
-        throw new Error(data.message || "Erro de configuração.");
+        throw new Error(data.message || data.error || "Erro de configuração no servidor.");
       }
 
-      // Here you would normally initialize the Pluggy Connect Widget with the accessToken:
-      // const { accessToken } = data;
-      // PluggyConnect.init({ connectToken: accessToken, onSuccess: (...) })
-      
-      // Since this requires UI integration for Pluggy, we simulate success for demo purposes
-      // Wait for a fake loading duration to simulate the flow
-      await new Promise(r => setTimeout(r, 2000));
-      setSyncError("Não foi possível carregar as contas na tela atual.");
+      setConnectToken(data.accessToken);
 
     } catch (err: any) {
       setSyncError(err.message || "Falha na sincronização.");
     } finally {
       setSyncing(false);
     }
+  };
+
+  const handlePluggySuccess = async (itemData: any) => {
+    // When an item is connected, its data comes here. 
+    // We would conceptually call our `/api/open-finance/accounts` passing `itemData.item.id` 
+    // And then add those to our firestore 'bank_accounts' collection.
+    // For demo purposes and since backend actually fetched this:
+    try {
+      setOpenFinanceDialog(false);
+      setConnectToken("");
+      // Call backend to fetch accounts
+      const res = await fetch("/api/open-finance/accounts", {
+         method: "POST",
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify({ itemId: itemData.item.id })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erro ao bsucar contas");
+      
+      // Save all fetched accounts into firestore
+      for (const acc of data.accounts) {
+         let type = "conta_corrente";
+         if (acc.type === "CREDIT") type = "cartao_credito";
+         
+         await add({
+           name: acc.name + " (" + acc.bankData?.transferNumber + ")",
+           type,
+           balance: acc.balance,
+           limit: acc.creditData?.creditLimit || 0
+         } as Omit<BankAccount, 'id' | 'userId' | 'createdAt' | 'updatedAt'>);
+      }
+      
+      alert("Contas sincronizadas com sucesso!");
+    } catch(e) {
+      console.error(e);
+      alert("Sucesso no Pluggy, mas erro ao salvar contas.");
+    }
+  };
+
+  const handlePluggyError = (error: any) => {
+    console.error("Pluggy Error:", error);
+    setSyncError("Houve um erro na conexão. Tente novamente.");
+    setConnectToken("");
   };
 
   const handleAdd = async () => {
@@ -91,31 +144,43 @@ export default function BankAccountsPage() {
                 <span className="sm:hidden">Sincronizar</span>
               </Button>
             </DialogTrigger>
-            <DialogContent>
-               <DialogHeader>
-                 <DialogTitle>Sincronização com Open Finance</DialogTitle>
-                 <DialogDescription>Conecte seus bancos automaticamente de forma segura via Pluggy / Open Finance Banco Central.</DialogDescription>
-               </DialogHeader>
-               <div className="space-y-4 py-4 text-center">
-                 <div className="mx-auto w-16 h-16 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-full flex items-center justify-center mb-4">
-                    <Landmark className="w-8 h-8" />
-                 </div>
-                 {syncError ? (
-                    <div className="bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 p-4 rounded-xl text-sm font-medium">
-                       {syncError}
-                    </div>
-                 ) : (
-                    <p className="text-slate-600 dark:text-slate-400 text-sm">
-                       Para esta integração funcionar, você precisa ter as credenciais da API configuradas (PLUGGY_CLIENT_ID e SECRET) no ambiente. Se você for o desenvolvedor, verifique as variáveis de ambiente.
-                    </p>
-                 )}
-               </div>
-               <DialogFooter>
-                 <Button onClick={handleOpenFinanceSync} disabled={syncing} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">
-                   {syncing ? <RefreshCcw className="w-4 h-4 mr-2 animate-spin" /> : <LinkIcon className="w-4 h-4 mr-2" />}
-                   {syncing ? 'Conectando...' : 'Iniciar Conexão Segura'}
-                 </Button>
-               </DialogFooter>
+             <DialogContent className={connectToken ? "sm:max-w-[800px] h-[80vh] w-[95vw] p-0" : ""}>
+               {connectToken ? (
+                  <div className="w-full h-full min-h-[500px]">
+                     <PluggyConnect
+                        connectToken={connectToken}
+                        onSuccess={handlePluggySuccess}
+                        onError={handlePluggyError}
+                     />
+                  </div>
+               ) : (
+                 <>
+                   <DialogHeader>
+                     <DialogTitle>Sincronização com Open Finance</DialogTitle>
+                     <DialogDescription>Conecte seus bancos automaticamente de forma segura via Pluggy / Open Finance Banco Central.</DialogDescription>
+                   </DialogHeader>
+                   <div className="space-y-4 py-4 text-center">
+                     <div className="mx-auto w-16 h-16 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-full flex items-center justify-center mb-4">
+                        <Landmark className="w-8 h-8" />
+                     </div>
+                     {syncError ? (
+                        <div className="bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 p-4 rounded-xl text-sm font-medium">
+                           {syncError}
+                        </div>
+                     ) : (
+                        <p className="text-slate-600 dark:text-slate-400 text-sm">
+                           Para esta integração funcionar, você precisa ter as credenciais da API configuradas (PLUGGY_CLIENT_ID e SECRET) no ambiente. Se você for o desenvolvedor, verifique as variáveis de ambiente.
+                        </p>
+                     )}
+                   </div>
+                   <DialogFooter>
+                     <Button onClick={handleOpenFinanceSync} disabled={syncing} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">
+                       {syncing ? <RefreshCcw className="w-4 h-4 mr-2 animate-spin" /> : <LinkIcon className="w-4 h-4 mr-2" />}
+                       {syncing ? 'Conectando...' : 'Iniciar Conexão Segura'}
+                     </Button>
+                   </DialogFooter>
+                 </>
+               )}
             </DialogContent>
           </Dialog>
 
