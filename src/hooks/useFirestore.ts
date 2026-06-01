@@ -25,6 +25,13 @@ export function useCollection<T>(collectionName: string) {
       where("userId", "==", user.uid)
     );
 
+    // Try a direct fetch to catch promise rejection
+    getDocs(q).then(res => {
+      console.log(`[${collectionName}] getDocs succeeded: ${res.size} docs`);
+    }).catch(err => {
+      console.error(`[${collectionName}] getDocs ERROR:`, err, err.code, err.message);
+    });
+
     const unsubscribe = onSnapshot(q, (snapshot) => {
       if (!isMounted) return;
       const results: T[] = [];
