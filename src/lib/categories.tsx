@@ -24,6 +24,26 @@ export function getCategoryIcon(category: string, type: string = "expense", clas
   return <HelpCircle className={className} />;
 }
 
+export function guessCategoryFromDescription(desc: string): string {
+  const norm = (desc || "").toLowerCase();
+  
+  if (norm.includes("padaria") || norm.includes("mercado") || norm.includes("ifood") || norm.includes("restaurante") || norm.includes("lanche") || norm.includes("café") || norm.includes("comida") || norm.includes("pizza") || norm.includes("hamburguer") || norm.includes("supermercado")) return "Alimentação";
+  if (norm.includes("uber") || norm.includes("gasolina") || norm.includes("combustível") || norm.includes("ônibus") || norm.includes("metrô") || norm.includes("pedágio") || norm.includes("estacionamento") || norm.includes("carro") || norm.includes("99")) return "Transporte";
+  if (norm.includes("farmácia") || norm.includes("médico") || norm.includes("remédio") || norm.includes("consulta") || norm.includes("exame") || norm.includes("hospital") || norm.includes("unimed")) return "Saúde";
+  if (norm.includes("aluguel") || norm.includes("condomínio") || norm.includes("casa") || norm.includes("iptu") || norm.includes("reforma")) return "Moradia";
+  if (norm.includes("escola") || norm.includes("curso") || norm.includes("faculdade") || norm.includes("livro") || norm.includes("material")) return "Educação";
+  if (norm.includes("luz") || norm.includes("água") || norm.includes("internet") || norm.includes("celular") || norm.includes("telefone") || norm.includes("energia") || norm.includes("conta")) return "Contas Base";
+  if (norm.includes("cinema") || norm.includes("festa") || norm.includes("jogo") || norm.includes("show") || norm.includes("balada") || norm.includes("bar") || norm.includes("cerveja") || norm.includes("ingresso") || norm.includes("netflix") || norm.includes("spotify")) return "Lazer";
+  if (norm.includes("viagem") || norm.includes("férias") || norm.includes("hotel") || norm.includes("passagem") || norm.includes("turismo") || norm.includes("airbnb")) return "Viagem";
+  if (norm.includes("roupa") || norm.includes("sapato") || norm.includes("shopping") || norm.includes("vestuário") || norm.includes("bolsa") || norm.includes("calçado")) return "Vestuário";
+  if (norm.includes("cabelo") || norm.includes("unha") || norm.includes("salão") || norm.includes("estética") || norm.includes("barbearia") || norm.includes("maquiagem")) return "Beleza";
+  if (norm.includes("fatura") || norm.includes("cartão") || norm.includes("nubank") || norm.includes("itaú") || norm.includes("bradesco") || norm.includes("banco") || norm.includes("picpay")) return "Cartões e Taxas";
+  if (norm.includes("mensalidade") || norm.includes("clube") || norm.includes("software") || norm.includes("assinatura")) return "Assinaturas";
+  if (norm.includes("presente") || norm.includes("doação") || norm.includes("caridade")) return "Presentes/Doações";
+  
+  return "Diversos";
+}
+
 export function getCategoryColor(category: string, type: string = "expense") {
   if (type === "income") return "bg-emerald-100 text-emerald-600 border-emerald-200";
   if (type === "deduction") return "bg-rose-100 text-rose-700 border-rose-200";

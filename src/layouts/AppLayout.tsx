@@ -3,6 +3,7 @@ import { LayoutDashboard, WalletCards, TrendingDown, Target, User, LifeBuoy, Bel
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/AuthProvider";
 import { GlobalChatFAB } from "@/components/GlobalChatFAB";
+import { QuickExpenseFAB } from "@/components/QuickExpenseModal";
 import { useTheme } from "@/components/ThemeProvider";
 
 const navItems = [
@@ -114,6 +115,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </main>
       
       <GlobalChatFAB />
+      <QuickExpenseFAB />
 
       {/* Mobile Bottom Nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 pb-safe z-50 transition-colors">
