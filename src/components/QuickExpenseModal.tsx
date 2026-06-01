@@ -53,10 +53,9 @@ export function QuickExpenseFAB() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
-          className="fixed bottom-[140px] md:bottom-8 right-4 md:right-48 h-14 rounded-full shadow-[0_10px_40px_-10px_rgba(16,185,129,0.5)] bg-emerald-600 hover:bg-emerald-700 px-5 overflow-hidden flex items-center justify-center z-50 group hover:-translate-y-1 transition-all duration-300"
+          className="fixed bottom-40 md:bottom-8 right-4 md:right-28 w-14 h-14 rounded-full shadow-[0_10px_40px_-10px_rgba(16,185,129,0.5)] bg-emerald-600 hover:bg-emerald-700 p-0 overflow-hidden flex items-center justify-center z-50 group hover:-translate-y-1 transition-all duration-300"
         >
-          <Zap className="w-5 h-5 text-emerald-100 group-hover:text-white group-hover:animate-pulse mr-2" />
-          <span className="font-semibold text-white tracking-wide">Pix/Gasto Rápido</span>
+          <Zap className="w-6 h-6 text-emerald-100 group-hover:text-white group-hover:animate-pulse" />
         </Button>
       </DialogTrigger>
       

@@ -6,6 +6,7 @@ import BankAccountsPage from "@/pages/BankAccountsPage";
 import LandingPage from "@/pages/LandingPage";
 import ExpensesPage from "@/pages/ExpensesPage";
 import GoalsPage from "@/pages/GoalsPage";
+import WishlistPage from "@/pages/WishlistPage";
 import AssistantPage from "@/pages/AssistantPage";
 import BudgetPage from "@/pages/BudgetPage";
 import FixedExpensesPage from "@/pages/FixedExpensesPage";
@@ -134,6 +135,16 @@ export function AppRouter() {
               <ProtectedRoute>
                 <AppLayout>
                   <GoalsPage />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/app/desejos"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <WishlistPage />
                 </AppLayout>
               </ProtectedRoute>
             }

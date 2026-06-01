@@ -6,6 +6,7 @@ import { Plus, TrendingDown, Clock, ShieldCheck, AlertTriangle } from "lucide-re
 import { useCollection } from "@/hooks/useFirestore";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { motion } from "motion/react";
 
 type Debt = {
   id?: string;
@@ -105,7 +106,7 @@ export default function DebtsPage() {
               <TrendingDown className="w-4 h-4 text-rose-500" />
               Total a pagar
             </p>
-            <h3 className="text-3xl font-bold text-slate-800">R$ {totalRestante.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</h3>
+            <h3 className="text-3xl font-bold font-mono tracking-tight text-slate-800">R$ {totalRestante.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</h3>
           </CardContent>
         </Card>
         <Card className="bg-emerald-50 border-emerald-100/50">
@@ -114,7 +115,7 @@ export default function DebtsPage() {
               <ShieldCheck className="w-4 h-4" />
               Já pago / Amortizado
             </p>
-            <h3 className="text-3xl font-bold text-emerald-700">R$ {Math.max(0, pago).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</h3>
+            <h3 className="text-3xl font-bold font-mono tracking-tight text-emerald-700">R$ {Math.max(0, pago).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</h3>
           </CardContent>
         </Card>
       </div>
@@ -122,16 +123,29 @@ export default function DebtsPage() {
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-slate-800">Lista Prioritária</h3>
         
-        <div className="grid grid-cols-1 gap-4">
+        <motion.div 
+           initial="hidden"
+           animate="visible"
+           variants={{ visible: { transition: { staggerChildren: 0.1 } } }}
+           className="grid grid-cols-1 gap-4"
+        >
           {loading ? (
              <div className="p-6 text-slate-500">Carregando suas dívidas...</div>
           ) : debts.length === 0 ? (
-             <div className="p-8 text-center text-slate-500 bg-slate-50 rounded-2xl border border-dashed">
-               Você não possui dívidas cadastradas. Que alívio!
-             </div>
+             <motion.div 
+               variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}
+               className="p-12 text-center flex flex-col items-center justify-center text-slate-500 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200"
+             >
+               <div className="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mb-4">
+                 <ShieldCheck className="w-8 h-8"/>
+               </div>
+               <p className="text-lg font-bold text-slate-800">Vida sem dívidas cadastradas</p>
+               <p className="max-w-xs mt-1">Nenhum registro encontrado. Que alívio! Ou cadastre sua primeira conta a quitar acima.</p>
+             </motion.div>
           ) : debts.map((debt) => (
-            <Card key={debt.id} className="transition-all hover:shadow-md">
-              <CardContent className="p-0">
+            <motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }} key={debt.id}>
+              <Card className="transition-all hover:-translate-y-0.5 hover:shadow-lg">
+                <CardContent className="p-0">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center p-6 gap-6">
                   <div className="flex items-center gap-4 w-full sm:w-1/3">
                     <div className={`w-12 h-12 rounded-2xl shrink-0 flex items-center justify-center text-white bg-slate-800`}>
@@ -145,8 +159,8 @@ export default function DebtsPage() {
 
                   <div className="w-full sm:w-1/4">
                     <p className="text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Restante</p>
-                    <p className="font-bold text-slate-800 text-lg">R$ {debt.remaining.toLocaleString('pt-BR')}</p>
-                    <p className="text-sm text-slate-500">de R$ {debt.total.toLocaleString('pt-BR')}</p>
+                    <p className="font-bold text-slate-800 text-lg font-mono tracking-tight">R$ {debt.remaining.toLocaleString('pt-BR')}</p>
+                    <p className="text-sm font-mono text-slate-500">de R$ {debt.total.toLocaleString('pt-BR')}</p>
                   </div>
 
                   <div className="w-full sm:w-1/4">
@@ -163,8 +177,9 @@ export default function DebtsPage() {
                 </div>
               </CardContent>
             </Card>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
 
     </div>

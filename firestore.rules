@@ -163,5 +163,13 @@ service cloud.firestore {
       allow update: if isValidId(budgetId) && isOwner(existing().userId) && incoming().userId == existing().userId;
       allow delete: if isValidId(budgetId) && isOwner(existing().userId);
     }
+
+    match /wishlist/{wishlistId} {
+      allow get: if isValidId(wishlistId) && isOwner(existing().userId);
+      allow list: if isVerifiedUser();
+      allow create: if isVerifiedUser();
+      allow update: if isValidId(wishlistId) && isOwner(existing().userId) && incoming().userId == existing().userId;
+      allow delete: if isValidId(wishlistId) && isOwner(existing().userId);
+    }
   }
 }

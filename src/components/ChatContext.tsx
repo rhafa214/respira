@@ -42,14 +42,17 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       // Get all current context
       const transactionsSnap = await getDocs(query(collection(db, "transactions"), where("userId", "==", uid)));
       const debtsSnap = await getDocs(query(collection(db, "debts"), where("userId", "==", uid)));
+      const wishlistSnap = await getDocs(query(collection(db, "wishlist"), where("userId", "==", uid)));
       
       const transactions = transactionsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       const debts = debtsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const wishlist = wishlistSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
       let contextStr = `Cenário do Usuário em Junho de 2026. Haja como um Assistente Financeiro Inteligente integrado.\n`;
       contextStr += `Você pode executar as tools para atualizar o BD se a intenção do usuário for clara.\n`;
       contextStr += `Transações atuais:\n${JSON.stringify(transactions)}\n`;
       contextStr += `Dívidas ativas:\n${JSON.stringify(debts)}\n`;
+      contextStr += `Lista de Desejos (itens que o usuário quer comprar):\n${JSON.stringify(wishlist)}\n`;
 
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const promptContext = `${contextStr}\nPergunta do usuário: "${userMessage}"`;
@@ -60,8 +63,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         config: {
           systemInstruction: "Aja como Copiloto Financeiro, estratégico, realista e emocionalmente engajado. \n" +
             "Se o usuário relatar que pagou algo, crie ou altere uma transação usando a tool. \n" +
+            "Se o usuário perguntar sobre compras da 'Lista de Desejos', simule estar gerenciando promoções, buscando o melhor preço (mencione algumas lojas reais) e avalie se o orçamento permite a compra daquele item no mês, baseado nas transações e dívidas. \n" +
             "Sempre que o usuário informar um novo gasto, use addTransaction, passe status como pago se apropriado, ou updateTransactionStatus se for alterar uma existente. \n" +
-            "Responda ao usuário com o que você fez e como isso impacta o saldo final.",
+            "Responda de forma sucinta ao que foi feito e como isso impacta o panorama geral.",
           temperature: 0.3,
           tools: [
             {

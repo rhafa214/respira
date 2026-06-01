@@ -4,7 +4,7 @@ import { ptBR } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Repeat, CalendarCheck, CheckCircle2, RotateCcw } from "lucide-react";
+import { Plus, Repeat, CalendarCheck, CheckCircle2, RotateCcw, Sparkles } from "lucide-react";
 import { useCollection } from "@/hooks/useFirestore";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -47,8 +47,6 @@ export default function FixedExpensesPage() {
     if (!user || fixedExpenses.length === 0) return;
     setGenerating(true);
     
-    // For each fixed expense, create a transaction IF it doesn't exist yet for this exact month + fixed config
-    // To prevent duplicates, we can check if a transaction with the same description, isFixed banner, and same month exists
     const currentMonthTxs = transactions.filter(t => t.date && t.date.substring(0, 7) === monthStr && t.isFixed);
     
     for (const fe of fixedExpenses) {
@@ -59,7 +57,7 @@ export default function FixedExpensesPage() {
             amount: fe.amount,
             category: fe.category,
             type: fe.type,
-            date: `${monthStr}-05`, // Defaulting to day 5, could be configurable
+            date: `${monthStr}-05`, 
             isFixed: true,
             status: "pending"
          });
@@ -69,6 +67,41 @@ export default function FixedExpensesPage() {
     setGenerating(false);
     alert(`Contas fixas cadastradas em ${monthName} com sucesso!`);
   };
+
+  const getSuggestedFixedExpenses = () => {
+    if (!transactions) return [];
+    
+    // Group transactions by description
+    const groups: Record<string, { count: number, total: number, category: string, type: string }> = {};
+    
+    transactions.forEach(t => {
+      if (t.isFixed || t.type !== 'expense') return; // Only look at non-fixed expenses
+      
+      const normDesc = t.description.trim().toUpperCase();
+      if (!groups[normDesc]) {
+        groups[normDesc] = { count: 0, total: 0, category: t.category, type: t.type };
+      }
+      groups[normDesc].count += 1;
+      groups[normDesc].total += Number(t.amount);
+    });
+
+    // Find descriptions that appear more than 1 time and are not already in fixedExpenses
+    const suggestions = Object.entries(groups)
+      .filter(([desc, data]) => {
+         const alreadyFixed = fixedExpenses.some(fe => fe.description.trim().toUpperCase() === desc);
+         return data.count >= 2 && !alreadyFixed;
+      })
+      .map(([desc, data]) => ({
+         description: desc, // We use uppercase for matching, but maybe original would be better. For now capitalized:
+         amount: data.total / data.count, // Average amount
+         category: data.category,
+         type: data.type
+      }));
+
+    return suggestions.slice(0, 5); // Return top 5 suggestions
+  };
+
+  const suggestions = getSuggestedFixedExpenses();
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 md:py-12 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -139,6 +172,50 @@ export default function FixedExpensesPage() {
           </Dialog>
         </div>
       </div>
+
+      {suggestions.length > 0 && (
+        <Card className="bg-indigo-50 border-indigo-100 mb-8 border-dashed">
+          <CardContent className="p-6">
+            <div className="flex items-start gap-4">
+               <div className="bg-indigo-100 text-indigo-600 p-3 rounded-full mt-1">
+                 <Sparkles className="w-5 h-5" />
+               </div>
+               <div className="flex-1">
+                 <h3 className="font-bold text-indigo-900 text-lg mb-1">Encontramos despesas fixas 🤖</h3>
+                 <p className="text-indigo-700/80 text-sm mb-4">
+                   Nossa IA analisou seu histórico e notou que você pagou essas contas mais de uma vez. Quer adicionar como recorrentes?
+                 </p>
+                 
+                 <div className="space-y-3">
+                   {suggestions.map((sug, i) => (
+                     <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-white/80 rounded-xl">
+                       <div className="flex items-center gap-3">
+                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${getCategoryColor(sug.category, sug.type)}`}>
+                            {getCategoryIcon(sug.category, sug.type, "w-4 h-4")}
+                         </div>
+                         <div>
+                           <p className="font-bold text-slate-800 capitalize text-sm">{sug.description.toLowerCase()}</p>
+                           <p className="text-xs text-slate-500">Média: R$ {sug.amount.toFixed(2).replace('.', ',')}</p>
+                         </div>
+                       </div>
+                       <Button 
+                         size="sm" 
+                         variant="outline" 
+                         className="mt-2 sm:mt-0 text-indigo-600 border-indigo-200 hover:bg-indigo-100 text-xs"
+                         onClick={async () => {
+                            await add({ description: sug.description.toLowerCase().replace(/\b\w/g, l => l.toUpperCase()), amount: Number(sug.amount.toFixed(2)), category: sug.category, type: sug.type });
+                         }}
+                       >
+                         <Plus className="w-3 h-3 mr-1" /> Adicionar à lista
+                       </Button>
+                     </div>
+                   ))}
+                 </div>
+               </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
           {loadingFixed ? (

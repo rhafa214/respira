@@ -2,10 +2,11 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Target, Plane, Home, Rocket, Star } from "lucide-react";
+import { Plus, Target, Plane, Home, Rocket, Star, Sprout } from "lucide-react";
 import { useCollection } from "@/hooks/useFirestore";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { motion } from "motion/react";
 
 type Goal = {
   id?: string;
@@ -93,16 +94,45 @@ export default function GoalsPage() {
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <motion.div 
+        initial="hidden" 
+        animate="visible" 
+        variants={{
+          visible: { transition: { staggerChildren: 0.1 } }
+        }}
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+      >
         {loading ? (
              <div className="p-12 col-span-full text-center text-slate-500">Buscando seus sonhos...</div>
+        ) : goals.length === 0 ? (
+             <motion.div 
+               variants={{
+                 hidden: { opacity: 0, scale: 0.9 },
+                 visible: { opacity: 1, scale: 1 }
+               }}
+               transition={{ duration: 0.3 }}
+               className="col-span-full py-16 flex flex-col items-center justify-center text-center"
+             >
+                <div className="w-24 h-24 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mb-6">
+                   <Sprout className="w-12 h-12" />
+                </div>
+                <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-200">Nenhum sonho definido, ainda.</h3>
+                <p className="text-slate-500 mt-2 max-w-md">Que tal plantar a primeira semente? Cadastre metas como uma viagem de férias ou fundos para uma casa, e nós o ajudaremos a acompanhar os fundos mês após mês!</p>
+             </motion.div>
         ) : goals.map((goal) => {
           const Icon = getIcon(goal.label);
           const percentage = Math.max(0, Math.min(100, Math.round((goal.current / goal.target) * 100)));
           const bg = "bg-indigo-500";
           
           return (
-            <Card key={goal.id} className="transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/50 cursor-pointer overflow-hidden relative group">
+            <motion.div 
+               key={goal.id}
+               variants={{
+                 hidden: { opacity: 0, y: 20 },
+                 visible: { opacity: 1, y: 0 }
+               }}
+            >
+              <Card className="transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/50 cursor-pointer overflow-hidden relative group h-full">
               <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-10 pointer-events-none transition-opacity">
                 <Icon className="w-32 h-32 text-slate-900 -rotate-12 transform translate-x-8 -translate-y-8" />
               </div>
@@ -119,42 +149,45 @@ export default function GoalsPage() {
                    
                    <div>
                      <h3 className="text-xl font-bold text-slate-800">{goal.title}</h3>
-                     <p className="text-sm font-medium text-slate-400 mt-1">Faltam R$ {Math.max(0, goal.target - goal.current).toLocaleString('pt-BR')}</p>
+                     <p className="text-sm font-medium font-mono tracking-tight text-slate-400 mt-1">Faltam R$ {Math.max(0, goal.target - goal.current).toLocaleString('pt-BR')}</p>
                    </div>
                  </div>
 
                  <div className="mt-8 space-y-2">
-                   <div className="flex justify-between text-sm font-bold">
+                   <div className="flex justify-between text-sm font-bold font-mono tracking-tight">
                      <span className={`text-indigo-600`}>R$ {goal.current?.toLocaleString('pt-BR') || 0}</span>
                      <span className="text-slate-400">R$ {goal.target?.toLocaleString('pt-BR') || 0}</span>
                    </div>
                    <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                       <div className={`${bg} h-2 rounded-full transition-all duration-1000 ease-out`} style={{ width: `${percentage}%` }}></div>
                    </div>
-                   <p className="text-xs text-right text-slate-500 font-medium pt-1">{percentage}% concluído</p>
+                   <p className="text-xs text-right text-slate-500 font-medium pt-1 font-mono">{percentage}% concluído</p>
                  </div>
               </CardContent>
             </Card>
+            </motion.div>
           )
         })}
 
         {/* Add Goal Empty State Trigger */}
-        <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-           <DialogTrigger asChild>
-             <Card className="border-dashed border-2 border-slate-200 bg-slate-50/50 hover:bg-slate-50 hover:border-indigo-300 transition-colors cursor-pointer group">
-                <CardContent className="p-6 h-full flex flex-col items-center justify-center text-center space-y-4 min-h-[280px]">
-                   <div className="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-500 group-hover:scale-110 transition-transform">
-                      <Plus className="w-8 h-8" />
-                   </div>
-                   <div>
-                      <p className="font-bold text-slate-800 text-lg">Criar novo sonho</p>
-                      <p className="text-sm text-slate-500 mt-1 max-w-[200px]">Carro novo? Faculdade? Casamento? O limite é seu.</p>
-                   </div>
-                </CardContent>
-             </Card>
-           </DialogTrigger>
-        </Dialog>
-      </div>
+        <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}>
+          <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+             <DialogTrigger asChild>
+               <Card className="border-dashed border-2 border-slate-200 bg-slate-50/50 hover:bg-slate-50 hover:border-indigo-300 transition-colors cursor-pointer group h-full min-h-[280px]">
+                  <CardContent className="p-6 h-full flex flex-col items-center justify-center text-center space-y-4">
+                     <div className="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-500 group-hover:scale-110 transition-transform">
+                        <Plus className="w-8 h-8" />
+                     </div>
+                     <div>
+                        <p className="font-bold text-slate-800 text-lg">Criar novo sonho</p>
+                        <p className="text-sm text-slate-500 mt-1 max-w-[200px] mx-auto">Carro novo? Faculdade? Casamento? O limite é seu.</p>
+                     </div>
+                  </CardContent>
+               </Card>
+             </DialogTrigger>
+          </Dialog>
+        </motion.div>
+      </motion.div>
 
     </div>
   );

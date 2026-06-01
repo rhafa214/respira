@@ -12,10 +12,9 @@ export function GlobalChatFAB() {
     <>
       <Button
         onClick={toggleChat}
-        className="fixed bottom-20 md:bottom-8 right-4 md:right-8 h-14 rounded-full shadow-[0_10px_40px_-10px_rgba(79,70,229,0.5)] bg-indigo-600 hover:bg-indigo-700 px-5 overflow-hidden flex items-center justify-center z-50 group hover:-translate-y-1 transition-all duration-300"
+        className="fixed bottom-24 md:bottom-8 right-4 md:right-8 w-14 h-14 rounded-full shadow-[0_10px_40px_-10px_rgba(79,70,229,0.5)] bg-indigo-600 hover:bg-indigo-700 p-0 overflow-hidden flex items-center justify-center z-50 group hover:-translate-y-1 transition-all duration-300"
       >
-        <Sparkles className="w-5 h-5 text-indigo-100 group-hover:text-white group-hover:animate-pulse mr-2" />
-        <span className="font-semibold text-white tracking-wide">Assistente</span>
+        <Sparkles className="w-6 h-6 text-indigo-100 group-hover:text-white group-hover:animate-pulse" />
       </Button>
       {isOpen && <ChatPanel />}
     </>

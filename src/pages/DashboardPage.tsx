@@ -3,7 +3,7 @@ import { format, addMonths, subMonths, startOfMonth, endOfMonth, isSameMonth, pa
 import { ptBR } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowUpRight, ArrowDownRight, CreditCard, Sparkles, ChevronLeft, ChevronRight, CheckCircle2, Clock, AlertCircle, ShieldAlert, Target } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, CreditCard, Sparkles, ChevronLeft, ChevronRight, CheckCircle2, Clock, AlertCircle, ShieldAlert, Target, Calendar, TrendingUp, Info, Activity, ReceiptText } from "lucide-react";
 import { useCollection } from "@/hooks/useFirestore";
 import { useAuth } from "@/components/AuthProvider";
 import { SeedDataAlert } from "@/components/SeedDataAlert";
@@ -247,389 +247,173 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 md:py-10 space-y-6 animate-in fade-in duration-500 pb-20">
+    <div className="max-w-xl mx-auto px-4 py-8 space-y-5 animate-in fade-in duration-500 pb-24">
       <SeedDataAlert />
 
       {/* Header & Month Selector */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-             Central do Mês
+          <h1 className="text-xl font-bold tracking-tight text-slate-900">
+             Visão Geral
           </h1>
-          <p className="text-sm text-slate-500 mt-1">Organize sua linha de sobrevivência.</p>
         </div>
         
-        <div className="flex items-center gap-4 bg-white p-2 rounded-2xl shadow-sm border border-slate-100">
-          <Button variant="ghost" size="icon" onClick={handlePrevMonth} className="rounded-xl hover:bg-slate-100">
-            <ChevronLeft className="w-5 h-5 text-slate-600" />
+        <div className="flex items-center gap-3 bg-white p-1 rounded-full shadow-sm border border-slate-100">
+          <Button variant="ghost" size="icon" onClick={handlePrevMonth} className="rounded-full w-8 h-8 hover:bg-slate-100">
+            <ChevronLeft className="w-4 h-4 text-slate-600" />
           </Button>
-          <span className="w-32 text-center font-bold text-slate-800 capitalize">
-            {monthYearString}
+          <span className="w-24 text-center font-bold text-slate-800 text-sm capitalize">
+            {format(currentDate, "MMMM", { locale: ptBR })}
           </span>
-          <Button variant="ghost" size="icon" onClick={handleNextMonth} className="rounded-xl hover:bg-slate-100">
-            <ChevronRight className="w-5 h-5 text-slate-600" />
+          <Button variant="ghost" size="icon" onClick={handleNextMonth} className="rounded-full w-8 h-8 hover:bg-slate-100">
+            <ChevronRight className="w-4 h-4 text-slate-600" />
           </Button>
         </div>
       </div>
 
-      {/* Target/Remaining Limit Indicator */}
-      <Card className={`border-none shadow-sm ${realBalance >= 0 ? 'bg-emerald-50' : 'bg-rose-50'}`}>
-         <CardContent className="p-4 sm:p-5 flex items-center gap-4">
-            <div className={`p-3 rounded-2xl shrink-0 ${realBalance >= 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
-               <Target className="w-6 h-6" />
-            </div>
-            <div>
-               <p className={`text-sm font-semibold uppercase tracking-wider ${realBalance >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
-                  {realBalance >= 0 ? 'Limite Mensal' : 'Alerta de Limite'}
-               </p>
-               <h2 className={`text-xl sm:text-2xl font-bold mt-1 ${realBalance >= 0 ? 'text-emerald-900' : 'text-rose-900'}`}>
-                  {realBalance >= 0 
-                    ? `Faltam ${formatCurrency(realBalance)} para atingir seu limite do mês.`
-                    : `Você ultrapassou seu limite em ${formatCurrency(Math.abs(realBalance))}.`}
-               </h2>
-            </div>
-         </CardContent>
-      </Card>
-
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Evolution Chart */}
-        <Card className="border-slate-200 shadow-sm overflow-hidden bg-white">
-           <CardContent className="p-5">
-              <h3 className="font-semibold text-slate-800 text-sm mb-4">Evolução do Saldo (Últimos 6 meses)</h3>
-              <div className="h-48 w-full mt-2" style={{ minWidth: 0, minHeight: 0 }}>
-                 <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                   <BarChart data={chartData} margin={{ top: 0, left: -20, right: 0, bottom: 0 }}>
-                     <XAxis 
-                       dataKey="name" 
-                       axisLine={false} 
-                       tickLine={false} 
-                       tick={{ fontSize: 12, fill: '#94a3b8' }} 
-                       dy={10} 
-                     />
-                     <Tooltip 
-                       cursor={{ fill: 'transparent' }}
-                       content={({ active, payload }) => {
-                         if (active && payload && payload.length) {
-                           const val = Number(payload[0].value);
-                           return (
-                             <div className="bg-slate-900 text-white text-xs py-1 px-2 rounded-md shadow-xl border-none">
-                               {formatCurrency(val)}
-                             </div>
-                           );
-                         }
-                         return null;
-                       }} 
-                     />
-                     <Bar dataKey="saldo" radius={[4, 4, 4, 4]}>
-                       {chartData.map((entry, index) => (
-                         <Cell key={`cell-${index}`} fill={entry.saldo >= 0 ? '#10b981' : '#f43f5e'} opacity={index === chartData.length - 1 ? 1 : 0.4} />
-                       ))}
-                     </Bar>
-                   </BarChart>
-                 </ResponsiveContainer>
-              </div>
-           </CardContent>
-        </Card>
-
-        {/* Categories Pie Chart */}
-        <Card className="border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden bg-white dark:bg-slate-900">
-           <CardContent className="p-5 flex flex-col h-full">
-              <h3 className="font-semibold text-slate-800 dark:text-slate-200 text-sm mb-4">Despesas por Categoria</h3>
-              {categoryData.length > 0 ? (
-                <div className="h-48 w-full flex-1" style={{ minWidth: 0, minHeight: 0 }}>
-                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                      <PieChart>
-                        <Pie
-                          data={categoryData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={80}
-                          paddingAngle={2}
-                          dataKey="value"
-                        >
-                          {categoryData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                      </PieChart>
-                   </ResponsiveContainer>
-                </div>
-              ) : (
-                <div className="flex-1 flex items-center justify-center text-sm text-slate-400">
-                  Sem despesas no mês
-                </div>
-              )}
-           </CardContent>
-        </Card>
+      {/* Saldo Atual Pill */}
+      <div className="bg-emerald-50 border border-emerald-100 rounded-full px-6 py-4 flex items-center gap-4">
+         <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+           <ArrowUpRight className="w-5 h-5" />
+         </div>
+         <span className="text-3xl font-bold tracking-tight text-slate-800">{formatCurrency(realBalance)}</span>
+         <div className="ml-auto text-emerald-700 bg-emerald-100 px-3 py-1 text-xs font-bold rounded-full uppercase tracking-widest hidden sm:block">
+            Saldo
+         </div>
       </div>
 
-      {/* Month Dashboard Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-        
-        <Card className="bg-slate-100 border-slate-200 text-slate-700 shadow-sm overflow-hidden relative">
-           <CardContent className="p-4 sm:p-5 flex flex-col justify-between h-full">
-             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Receita Bruta</p>
-             <p className="text-xl font-bold mt-1 text-slate-400">{formatCurrency(grossIncome)}</p>
-             
-             <div className="mt-3 pt-3 border-t border-slate-200">
-                <p className="text-xs font-medium text-rose-500">Descontos Automáticos (BB)</p>
-                <p className="text-sm font-bold text-rose-600 mt-0.5">- {formatCurrency(automaticDeductions)}</p>
-             </div>
-           </CardContent>
-        </Card>
-
-        <Card className="bg-indigo-600 text-white border-none shadow-md overflow-hidden relative">
-           <div className="absolute top-0 right-0 p-4 opacity-10 blur-md pointer-events-none">
-              <div className="w-16 h-16 rounded-full bg-white"></div>
-           </div>
-           <CardContent className="p-4 sm:p-5 relative z-10 flex flex-col justify-between h-full">
-             <div className="flex gap-2 items-center">
-               <p className="text-xs font-semibold text-indigo-200 uppercase tracking-wider">Renda Real Disponível</p>
-             </div>
-             <p className="text-2xl sm:text-3xl font-bold mt-2">{formatCurrency(realIncome)}</p>
-             <p className="text-xs text-indigo-300 mt-2">O que realmente sobra para suas contas.</p>
-           </CardContent>
-        </Card>
-        
-        <Card className="bg-white border-slate-200 shadow-sm relative overflow-hidden">
-           <CardContent className="p-4 sm:p-5 flex flex-col justify-between h-full">
-             <div className="flex justify-between items-start">
-               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Comprometido</p>
-             </div>
-             <p className="text-2xl sm:text-3xl font-bold text-slate-800 mt-2">{formatCurrency(totalExpense)}</p>
-             <p className="text-xs text-slate-400 mt-2">A soma de todos os gastos no mês.</p>
-           </CardContent>
-        </Card>
-
-        <Card className="bg-slate-900 border-slate-800 shadow-md relative overflow-hidden">
-           <div className="absolute top-0 right-0 p-4 opacity-10 blur-md pointer-events-none">
-              <div className="w-16 h-16 rounded-full bg-emerald-500"></div>
-           </div>
-           <CardContent className="p-4 sm:p-5 flex flex-col justify-between h-full relative z-10">
-             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Previsão Saldo Fim do Mês</p>
-             <p className={`text-2xl sm:text-3xl font-bold mt-2 ${realBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-               {formatCurrency(realBalance)}
-             </p>
-             <p className="text-xs text-slate-500 mt-2">
-               {savingsPercentage > 0 ? `Isso representa ${savingsPercentage.toFixed(1)}% da sua renda real.` : "Projetado quando todas as contas pendentes do mês forem pagas."}
-             </p>
-           </CardContent>
-        </Card>
-      </div>
-
-      {/* Progress & Risk */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="border-slate-200 shadow-sm">
-          <CardContent className="p-5 space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="font-semibold text-slate-800 text-sm">Status das Contas ({progressPercentage}%)</h3>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4 mt-2">
-               <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-100">
-                  <p className="text-xs font-medium text-emerald-600">Pagas</p>
-                  <p className="text-lg font-bold text-emerald-700">{formatCurrency(totalPaid)}</p>
-               </div>
-               <div className="bg-orange-50 p-3 rounded-xl border border-orange-100">
-                  <p className="text-xs font-medium text-orange-600">Pendentes</p>
-                  <p className="text-lg font-bold text-orange-700">{formatCurrency(totalPending)}</p>
-               </div>
-            </div>
-            <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
-              <div className="bg-emerald-500 h-2.5 rounded-full transition-all duration-1000" style={{ width: `${progressPercentage}%` }}></div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <div className="space-y-4 flex flex-col">
-          <Card className={`border shadow-sm flex-1 ${riskBg}`}>
-             <CardContent className="p-5 flex flex-col justify-center h-full">
-               <p className="text-xs font-semibold opacity-80 uppercase tracking-wider mb-1">Diagnóstico do Mês</p>
-               <div className="flex items-center gap-3">
-                 <ShieldAlert className={`w-8 h-8 ${riskColor}`} />
-                 <p className={`text-xl font-bold ${riskColor}`}>{riskLabel}</p>
-               </div>
-             </CardContent>
-          </Card>
-          
-          <Card className="bg-indigo-50/50 border-indigo-100 shadow-sm flex-1">
-             <CardContent className="p-4 flex items-start gap-3 h-full">
-               <div className="bg-indigo-100 p-2 rounded-xl text-indigo-600 shrink-0 mt-0.5">
-                 <Sparkles className="w-5 h-5" />
+      {/* Entradas */}
+      <div className="bg-[#f8f5ff] border border-violet-100 rounded-[2rem] p-6 relative overflow-hidden group hover:shadow-md transition-shadow">
+         <div className="flex justify-between items-start">
+            <div className="flex items-center gap-3">
+               <div className="bg-violet-100 p-3 rounded-2xl text-violet-600 shadow-sm">
+                  <TrendingUp className="w-6 h-6" />
                </div>
                <div>
-                 <p className="text-sm font-semibold text-indigo-900">Análise do Consultor</p>
-                 <p className="text-xs sm:text-sm text-indigo-700 leading-relaxed mt-1">
-                   {aiInsights()}
-                 </p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-violet-600">Entradas do Mês</p>
+                  <div className="flex items-center gap-1.5 text-violet-400 text-sm font-medium mt-0.5">
+                     {monthYearString} <Calendar className="w-3.5 h-3.5" />
+                  </div>
                </div>
-             </CardContent>
-          </Card>
+            </div>
+            <div className="bg-white/60 p-2 rounded-full text-violet-400 shadow-sm">
+               <ChevronRight className="w-5 h-5" />
+            </div>
+         </div>
+         
+         <div className="mt-6">
+            <p className="text-4xl font-bold tracking-tight text-violet-950">{formatCurrency(grossIncome)}</p>
+         </div>
+         
+         {grossIncome === 0 && (
+             <div className="mt-5 bg-violet-100/50 p-4 rounded-[1rem] flex items-start gap-3">
+                <Info className="w-5 h-5 text-violet-500 shrink-0 mt-0.5" />
+                <div>
+                   <p className="text-sm font-medium text-violet-900">Nenhuma entrada registrada</p>
+                   <p className="text-xs text-violet-700 mt-1 leading-relaxed">Adicione sua primeira entrada para ver o gráfico crescer.</p>
+                </div>
+             </div>
+         )}
+      </div>
+
+      {/* Gastos */}
+      <div className="bg-[#f0fdf4] border border-emerald-100 rounded-[2rem] p-6 relative overflow-hidden group hover:shadow-md transition-shadow">
+         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-1/2 bg-emerald-400 rounded-r-lg" />
+         <div className="flex justify-between items-start pl-2">
+            <div className="flex items-center gap-3">
+               <div className="text-emerald-500">
+                  <ReceiptText className="w-6 h-6" />
+               </div>
+               <p className="text-lg font-bold text-slate-800">Gastos</p>
+            </div>
+            <div className="text-emerald-600 text-sm font-medium flex items-center gap-2">
+               Mês de {format(currentDate, "MMMM", { locale: ptBR })}
+               <ChevronRight className="w-4 h-4 opacity-50" />
+            </div>
+         </div>
+         
+         <div className="mt-6 pl-2">
+            <p className="text-4xl font-bold tracking-tight text-slate-900">{formatCurrency(totalExpense)}</p>
+         </div>
+      </div>
+
+      {/* Desafios & Insights (Substituindo o layout antigo) */}
+      <div className="pt-4">
+        <div className="flex justify-between items-center mb-4">
+           <h3 className="text-lg font-bold text-slate-900">IA Financeira</h3>
+           <span className="text-emerald-600 text-sm font-semibold">Ver Análise</span>
+        </div>
+        
+        <Card className="bg-white border border-slate-200 rounded-[1.5rem] shadow-sm overflow-hidden">
+          <CardContent className="p-0">
+             <div className="p-5 border-b border-slate-100 flex items-start gap-4">
+                <div className="bg-emerald-50 p-3 rounded-2xl text-emerald-600 shrink-0">
+                   <Target className="w-6 h-6" />
+                </div>
+                <div>
+                   <p className="font-bold text-slate-800">Progresso do Mês</p>
+                   <p className="text-sm text-slate-500 mt-1 leading-relaxed">{aiInsights()}</p>
+                </div>
+             </div>
+             
+             {predictiveAlerts.length > 0 && predictiveAlerts.slice(0,1).map((alert, idx) => (
+               <div key={idx} className="p-5 bg-orange-50 flex items-start gap-4 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-4 opacity-10">
+                     <AlertCircle className="w-20 h-20 text-orange-900" />
+                  </div>
+                  <div className="bg-white p-2.5 rounded-xl text-orange-500 shadow-sm shrink-0 z-10">
+                     <AlertCircle className="w-5 h-5" />
+                  </div>
+                  <div className="z-10 relative">
+                     <p className="font-bold text-orange-900">Alerta de Gastos</p>
+                     <p className="text-sm text-orange-800 mt-1 leading-relaxed">{alert}</p>
+                  </div>
+               </div>
+             ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Transações Recentes Simplificado */}
+      <div className="pt-4">
+        <div className="flex justify-between items-center mb-4">
+           <h3 className="text-lg font-bold text-slate-900">Transações</h3>
+        </div>
+        <div className="space-y-3">
+          {monthTransactions.length === 0 ? (
+            <div className="text-center px-6 py-8 border border-dashed border-slate-200 rounded-[1.5rem]">
+               <p className="text-slate-500 text-sm">Nenhum registro encontrado.</p>
+            </div>
+          ) : (
+             monthTransactions.slice(0, 5).map((tx: any) => {
+              const isIncome = tx.type === "income";
+              const isDeduction = tx.type === "deduction";
+              const isPaid = tx.status === "paid" || isDeduction;
+              
+              return (
+                <div key={tx.id} className="flex items-center justify-between bg-white p-4 rounded-[1.25rem] border border-slate-100 shadow-sm">
+                   <div className="flex items-center gap-4">
+                     <div className={`p-2.5 rounded-xl shrink-0 ${isPaid && !isIncome && !isDeduction ? 'bg-slate-100 text-slate-400' : getCategoryColor(tx.category || tx.description, tx.type)}`}>
+                       {getCategoryIcon(tx.category || tx.description, tx.type)}
+                     </div>
+                     <div>
+                        <p className={`font-semibold text-sm ${isPaid && !isDeduction && !isIncome ? 'text-slate-500 line-through' : 'text-slate-800'}`}>
+                          {tx.description}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-0.5">{tx.category || "Outros"}</p>
+                     </div>
+                   </div>
+                   <div className="text-right">
+                      <p className={`font-bold text-sm ${isIncome ? 'text-violet-600' : isDeduction ? 'text-rose-600' : 'text-slate-800'}`}>
+                         {isIncome ? '+' : '-'} {formatCurrency(Number(tx.amount))}
+                      </p>
+                   </div>
+                </div>
+              )
+             })
+          )}
         </div>
       </div>
-
-      {/* Alertas Preditivos */}
-      {predictiveAlerts.length > 0 && (
-         <div className="space-y-3 mt-6">
-            <h3 className="font-semibold text-slate-800 text-sm">Alertas Preditivos do Sistema</h3>
-            {predictiveAlerts.map((alert, idx) => (
-               <Card key={idx} className="border-orange-200 bg-orange-50/80 shadow-none">
-                  <CardContent className="p-3 sm:p-4 flex items-start gap-3">
-                     <div className="bg-orange-100 p-2 rounded-xl text-orange-600 shrink-0 mt-0.5">
-                        <AlertCircle className="w-4 h-4" />
-                     </div>
-                     <p className="text-sm text-orange-900 leading-relaxed">{alert}</p>
-                  </CardContent>
-               </Card>
-            ))}
-         </div>
-      )}
-
-      {/* Alerta Julho */}
-      <Card className="border-orange-200 bg-orange-50 mt-6 shadow-sm">
-        <CardContent className="p-4 flex items-start gap-3">
-          <div className="bg-orange-100 p-2 rounded-xl text-orange-600 shrink-0">
-            <AlertCircle className="w-5 h-5" />
-          </div>
-          <div>
-            <h4 className="text-sm font-bold text-orange-900">Atenção para o próximo mês</h4>
-            <p className="text-sm text-orange-800 mt-1">
-              <strong>Julho</strong> terá maior pressão financeira. O terceiro empréstimo do Banco do Brasil (<strong>R$ 448,17</strong>) entrará nos descontos automáticos, reduzindo ainda mais sua <strong>Renda Real Disponível</strong>. Prepare-se cortando gastos supérfluos agora.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Timeline / Transactions List Header with Export Button */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 px-1">
-        <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">Contas do Mês ({monthTransactions.length})</h2>
-        <Button 
-           variant="outline" 
-           className="shadow-sm gap-2"
-           onClick={() => {
-              const headers = "Data,Descrição,Categoria,Tipo,Valor\n";
-              const rows = monthTransactions.map(t => `${t.date},"${t.description}",${t.category || ''},${t.type},${t.amount}`);
-              const csvContent = headers + rows.join("\n");
-              const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-              const link = document.createElement("a");
-              const url = URL.createObjectURL(blob);
-              link.setAttribute("href", url);
-              link.setAttribute("download", `Transacoes_${monthYearString.replace(' ', '_')}.csv`);
-              link.style.visibility = 'hidden';
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-           }}
-        >
-           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-download"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-           Exportar CSV
-        </Button>
-      </div>
-
-      <div className="space-y-3">
-        {monthTransactions.length === 0 ? (
-          <div className="text-center bg-slate-50 rounded-2xl p-8 border border-dashed border-slate-200">
-             <p className="text-slate-500">Nenhum registro encontrado para este mês.</p>
-          </div>
-        ) : (
-          monthTransactions.map((tx: any) => {
-            const isIncome = tx.type === "income";
-            const isDeduction = tx.type === "deduction";
-            const isPaid = tx.status === "paid" || isDeduction; // Deductions are treated as paid automatically
-            const isPending = !isPaid && !isIncome;
-            
-            return (
-              <Card key={tx.id} className={`transition-all ${
-                 isDeduction ? 'opacity-80 bg-rose-50 border-rose-100' :
-                 isPaid ? 'opacity-70 bg-slate-50 border-slate-100' : 
-                 'bg-white border-slate-200 hover:border-slate-300 shadow-sm'
-              }`}>
-                <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
-                  <div className="flex items-center gap-4">
-                    {/* Icon */}
-                    <div className={`p-3 rounded-2xl shrink-0 ${isPaid && !isIncome && !isDeduction ? 'bg-slate-200 text-slate-500 opacity-60' : getCategoryColor(tx.category || tx.description, tx.type)}`}>
-                      {getCategoryIcon(tx.category || tx.description, tx.type)}
-                    </div>
-                    
-                    {/* Details */}
-                    <div>
-                      <h4 className={`font-semibold ${isPaid && !isDeduction ? 'text-slate-500 line-through' : isDeduction ? 'text-rose-800' : 'text-slate-800'}`}>
-                        {tx.description}
-                      </h4>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className={`text-xs font-medium ${isDeduction ? 'text-rose-600' : 'text-slate-500'}`}>{tx.category}</span>
-                        {tx.installmentInfo && (
-                          <span className="text-xs font-medium bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">
-                            Parcela {tx.installmentInfo}
-                          </span>
-                        )}
-                        {tx.isRecurring && !isDeduction && (
-                          <span className="text-xs font-medium bg-blue-50 text-blue-600 px-2 py-0.5 rounded-md">
-                            Recorrente
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between sm:justify-end gap-6 sm:w-1/3">
-                    <div className="text-left sm:text-right">
-                      <p className={`font-bold ${
-                        isIncome ? 'text-emerald-600' :
-                        isDeduction ? 'text-rose-700' :
-                        isPaid ? 'text-slate-500' :
-                        'text-slate-800'
-                      }`}>
-                        {isIncome ? '+' : '-'} {formatCurrency(Number(tx.amount))}
-                      </p>
-                      <p className={`text-xs font-medium mt-1 ${isDeduction ? 'text-rose-600' : isPaid ? 'text-emerald-600' : isIncome ? 'text-emerald-600' : 'text-orange-600'}`}>
-                        {isDeduction ? "Desconto Fixo" : isPaid ? "Pago" : isIncome ? "Recebido" : "Pendente"}
-                      </p>
-                    </div>
-
-                    {!isIncome && isPending && (
-                      <Button size="sm" onClick={() => handleMarkAsPaid(tx.id)} className="shrink-0 bg-white border border-slate-200 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 shadow-sm transition-colors">
-                        Pagar
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })
-        )}
-      </div>
-
-      {debts && debts.length > 0 && (
-        <>
-          <h2 className="text-lg font-bold text-slate-900 pt-8 px-1">Seu Mapa de Dívidas Ativas</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {debts.sort((a: any, b: any) => a.remaining - b.remaining).map((debt: any) => (
-              <Card key={debt.id} className="border-slate-200">
-                <CardContent className="p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-rose-100 p-2 rounded-xl text-rose-600">
-                      <CreditCard className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-slate-800">{debt.bank}</p>
-                      <p className="text-xs text-slate-500">{debt.type} - {debt.status}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-slate-800">{formatCurrency(Number(debt.remaining || 0))}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </>
-      )}
-
     </div>
   );
 }
-
