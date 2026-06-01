@@ -13,10 +13,15 @@ export function useCollection<T>(collectionName: string) {
     if (!user) return;
     
     let isMounted = true;
-    const timeoutId = setTimeout(() => {
-      if (isMounted && loading) {
-        setLoading(false);
-        setError("O servidor demorou muito para responder. Verifique sua conexão à internet ou se algum bloqueador de anúncios (AdBlock, Brave) está impedindo o acesso ao Firebase.");
+    let timeoutId = setTimeout(() => {
+      if (isMounted) {
+        setLoading(prev => {
+          if (prev) {
+            setError("O servidor demorou muito para responder. Verifique sua conexão à internet ou se algum bloqueador de anúncios (AdBlock, Brave) está impedindo o acesso ao Firebase.");
+            return false;
+          }
+          return prev;
+        });
       }
     }, 10000);
 
@@ -34,6 +39,10 @@ export function useCollection<T>(collectionName: string) {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       if (!isMounted) return;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = 0 as any;
+      }
       const results: T[] = [];
       snapshot.forEach((doc) => {
         results.push({ id: doc.id, ...doc.data() } as unknown as T);
@@ -43,15 +52,21 @@ export function useCollection<T>(collectionName: string) {
       setError(null);
     }, (err) => {
       if (!isMounted) return;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = 0 as any;
+      }
       console.error(err);
       setError(err instanceof Error ? err.message : String(err));
       setLoading(false);
-      handleFirestoreError(err, OperationType.LIST, collectionName);
+      
+      // Do not throw here because it's caught in the stream error and would just pollute unhandled exceptions
+      console.error("[Firestore Error]", err);
     });
 
     return () => {
       isMounted = false;
-      clearTimeout(timeoutId);
+      if (timeoutId) clearTimeout(timeoutId);
       unsubscribe();
     };
   }, [collectionName, user]);

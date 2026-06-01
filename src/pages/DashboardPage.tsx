@@ -210,8 +210,8 @@ export default function DashboardPage() {
       <Card className="border-slate-200 shadow-sm overflow-hidden bg-white">
          <CardContent className="p-5">
             <h3 className="font-semibold text-slate-800 text-sm mb-4">Evolução do Saldo (Últimos 6 meses)</h3>
-            <div className="h-40 w-full mt-2">
-               <ResponsiveContainer width="100%" height="100%">
+            <div className="h-40 w-full mt-2" style={{ minWidth: 0, minHeight: 0 }}>
+               <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                  <BarChart data={chartData} margin={{ top: 0, left: -20, right: 0, bottom: 0 }}>
                    <XAxis 
                      dataKey="name" 
