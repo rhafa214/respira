@@ -147,5 +147,13 @@ service cloud.firestore {
       allow update: if isValidId(goalId) && isOwner(existing().userId) && isValidGoalUpdate(incoming(), existing()) && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'target', 'current', 'label', 'updatedAt']);
       allow delete: if isValidId(goalId) && isOwner(existing().userId);
     }
+    
+    match /fixed_expenses/{expenseId} {
+      allow get: if isValidId(expenseId) && isOwner(existing().userId);
+      allow list: if isVerifiedUser();
+      allow create: if isVerifiedUser();
+      allow update: if isValidId(expenseId) && isOwner(existing().userId) && incoming().userId == existing().userId;
+      allow delete: if isValidId(expenseId) && isOwner(existing().userId);
+    }
   }
 }
