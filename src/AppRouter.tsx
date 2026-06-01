@@ -2,10 +2,13 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppLayout } from "@/layouts/AppLayout";
 import DashboardPage from "@/pages/DashboardPage";
 import DebtsPage from "@/pages/DebtsPage";
+import BankAccountsPage from "@/pages/BankAccountsPage";
 import LandingPage from "@/pages/LandingPage";
 import ExpensesPage from "@/pages/ExpensesPage";
 import GoalsPage from "@/pages/GoalsPage";
 import AssistantPage from "@/pages/AssistantPage";
+import BudgetPage from "@/pages/BudgetPage";
+import FixedExpensesPage from "@/pages/FixedExpensesPage";
 import { AuthProvider, useAuth } from "@/components/AuthProvider";
 import { ChatProvider } from "@/components/ChatContext";
 import { MonthProvider } from "@/components/MonthContext";
@@ -50,6 +53,26 @@ export function AppRouter() {
             }
           />
           <Route
+            path="/app/lancamentos"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <ExpensesPage />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/app/bancos"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <BankAccountsPage />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/app/dividas"
             element={
               <ProtectedRoute>
@@ -60,14 +83,21 @@ export function AppRouter() {
             }
           />
           <Route
-            path="/app/estrategia"
+            path="/app/orcamento"
             element={
               <ProtectedRoute>
                 <AppLayout>
-                  <div className="p-8 text-center text-slate-500">
-                    <h2 className="text-xl font-bold text-slate-800 mb-2">Estratégia do Mês</h2>
-                    <p>Módulo de planejamento estratégico em construção.</p>
-                  </div>
+                  <BudgetPage />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/app/fixas"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <FixedExpensesPage />
                 </AppLayout>
               </ProtectedRoute>
             }

@@ -30,9 +30,20 @@ export default function ExpensesPage() {
     return tMonth === currMonth;
   });
 
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterType, setFilterType] = useState<string>("all");
   const [openDialog, setOpenDialog] = useState(false);
   const [newTx, setNewTx] = useState<Partial<Transaction>>({ type: 'expense', category: 'Alimentação' });
   const [adding, setAdding] = useState(false);
+
+  const filteredTransactions = transactions.filter(t => {
+     if (searchTerm && !t.description.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+     if (filterType !== 'all') {
+        if (filterType === 'income' && t.type !== 'income') return false;
+        if (filterType === 'expense' && t.type !== 'expense') return false;
+     }
+     return true;
+  });
 
   const handleAdd = async () => {
     if (!newTx.description || !newTx.amount || !newTx.date) return;
@@ -138,44 +149,54 @@ export default function ExpensesPage() {
       </div>
 
       {/* Filter Options */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         <div className="relative flex-1 max-w-sm">
            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-           <Input placeholder="Buscar gasto..." className="pl-9" />
+           <Input 
+             placeholder="Buscar por nome..." 
+             className="pl-9 dark:bg-slate-900 border-slate-200 dark:border-slate-800" 
+             value={searchTerm}
+             onChange={e => setSearchTerm(e.target.value)}
+           />
         </div>
-        <Button variant="outline" className="gap-2 px-3">
-           <Filter className="w-4 h-4" />
-           <span className="hidden sm:inline">Filtros</span>
-        </Button>
+        <select 
+           className="h-10 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+           value={filterType}
+           onChange={e => setFilterType(e.target.value)}
+        >
+           <option value="all">Todas</option>
+           <option value="income">Apenas Receitas</option>
+           <option value="expense">Apenas Despesas</option>
+        </select>
       </div>
 
       <Card>
         <CardContent className="p-0">
            {loading ? (
              <div className="p-8 text-center text-slate-500">Carregando...</div>
-           ) : transactions.length === 0 ? (
+           ) : filteredTransactions.length === 0 ? (
              <div className="p-8 text-center text-slate-500">
-               Nenhuma transação registrada. Que tal adicionar a primeira?
+               {transactions.length === 0 ? 'Nenhuma transação registrada. Que tal adicionar a primeira?' : 'Nenhuma transação encontrada para este filtro.'}
              </div>
            ) : (
-             <div className="divide-y divide-slate-100">
-                {transactions.map((expense) => {
+             <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                {filteredTransactions.map((expense) => {
                    return (
-                     <div key={expense.id} className="p-4 sm:p-6 flex items-center justify-between hover:bg-slate-50 transition-colors group">
+                     <div key={expense.id} className="p-4 sm:p-6 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
                         <div className="flex items-center gap-4">
                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${getColor(expense.category, expense.type)}`}>
                               {getIcon(expense.category)}
                            </div>
                            <div>
-                              <p className="font-semibold text-slate-900">{expense.description}</p>
-                              <p className="text-sm text-slate-500">{expense.type === 'income' ? 'Entrada' : expense.category}</p>
+                              <p className="font-semibold text-slate-900 dark:text-slate-100">{expense.description}</p>
+                              <p className="text-sm text-slate-500 dark:text-slate-400">{expense.type === 'income' ? 'Entrada' : expense.category}</p>
                            </div>
                         </div>
                         <div className="text-right">
-                           <p className={`font-bold ${expense.type === 'income' ? 'text-emerald-600' : 'text-slate-800'}`}>
+                           <p className={`font-bold ${expense.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-800 dark:text-slate-200'}`}>
                              {expense.type === 'income' ? '+' : '-'} R$ {expense.amount.toFixed(2).replace('.', ',')}
                            </p>
-                           <p className="text-sm text-slate-400">{new Date(expense.date).toLocaleDateString('pt-BR')}</p>
+                           <p className="text-sm text-slate-400 dark:text-slate-500">{new Date(expense.date).toLocaleDateString('pt-BR')}</p>
                         </div>
                      </div>
                    )

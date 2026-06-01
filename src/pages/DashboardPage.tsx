@@ -7,9 +7,11 @@ import { ArrowUpRight, ArrowDownRight, CreditCard, Sparkles, ChevronLeft, Chevro
 import { useCollection } from "@/hooks/useFirestore";
 import { useAuth } from "@/components/AuthProvider";
 import { SeedDataAlert } from "@/components/SeedDataAlert";
-import { BarChart, Bar, ResponsiveContainer, Tooltip, XAxis, Cell } from "recharts";
+import { BarChart, Bar, PieChart, Pie, ResponsiveContainer, Tooltip, XAxis, Cell } from "recharts";
 
 import { useMonth } from "@/components/MonthContext";
+
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6', '#06b6d4', '#ec4899', '#64748b'];
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -21,22 +23,24 @@ export default function DashboardPage() {
 
   const monthYearString = format(currentDate, "MMMM yyyy", { locale: ptBR });
   
-  const {
-    monthTransactions,
-    grossIncome,
-    automaticDeductions,
-    realIncome,
-    totalExpense,
-    totalPaid,
-    totalPending,
-    realBalance,
-    progressPercentage,
-    riskLabel,
-    riskColor,
-    riskBg,
-    chartData
-  } = useMemo(() => {
-    if (!allTransactions) return { monthTransactions: [], grossIncome: 0, automaticDeductions: 0, realIncome: 0, totalExpense: 0, totalPaid: 0, totalPending: 0, realBalance: 0, progressPercentage: 0, riskLabel: "Calculando...", riskColor: "text-slate-500", riskBg: "bg-slate-50", chartData: [] };
+    const {
+      monthTransactions,
+      grossIncome,
+      automaticDeductions,
+      realIncome,
+      totalExpense,
+      totalPaid,
+      totalPending,
+      realBalance,
+      progressPercentage,
+      savingsPercentage,
+      riskLabel,
+      riskColor,
+      riskBg,
+      chartData,
+      categoryData
+    } = useMemo(() => {
+      if (!allTransactions) return { monthTransactions: [], grossIncome: 0, automaticDeductions: 0, realIncome: 0, totalExpense: 0, totalPaid: 0, totalPending: 0, realBalance: 0, progressPercentage: 0, savingsPercentage: 0, riskLabel: "Calculando...", riskColor: "text-slate-500", riskBg: "bg-slate-50", chartData: [], categoryData: [] };
     
     // Filter by current month
     const currentMonthTxs = allTransactions.filter(t => {
@@ -51,6 +55,8 @@ export default function DashboardPage() {
     let expAll = 0;
     let expPaid = 0;
     let expPending = 0;
+    
+    const categoryMap: Record<string, number> = {};
 
     currentMonthTxs.forEach(t => {
       const amt = Number(t.amount);
@@ -66,8 +72,16 @@ export default function DashboardPage() {
           // Both "pending" and "late"
           expPending += amt;
         }
+        
+        const cat = t.category || "Outros";
+        categoryMap[cat] = (categoryMap[cat] || 0) + amt;
       }
     });
+
+    const categoryData = Object.keys(categoryMap).map(key => ({
+      name: key,
+      value: categoryMap[key]
+    })).sort((a, b) => b.value - a.value);
 
     const realInc = grossInc - autoDed;
     // Livre real = Receita Total Disponível - Total Comprometido
@@ -123,10 +137,12 @@ export default function DashboardPage() {
       totalPending: expPending,
       realBalance,
       progressPercentage: progress,
+      savingsPercentage: realInc > 0 ? (realBalance / realInc) * 100 : 0,
       riskLabel: rLabel,
       riskColor: rColor,
       riskBg: rBg,
-      chartData
+      chartData,
+      categoryData
     };
   }, [allTransactions, currentDate]);
 
@@ -158,6 +174,11 @@ export default function DashboardPage() {
     } else if (realBalance < 400) {
       return `Você tem apenas ${formatCurrency(realBalance)} de margem real. Você conseguiu manter o mês dentro do controle. Lembre-se: pequenas vitórias também são progresso. Mantenha os nervos calmos.`;
     }
+    
+    if (savingsPercentage > 0) {
+      return `Mês sob controle! Você economizou ${savingsPercentage.toFixed(1)}% da sua renda esse mês (${formatCurrency(realBalance)} livres). Aproveite sua Verba de Respiro sem culpa, ela é importante para a sua saúde mental.`;
+    }
+    
     return "Mês sob controle! Aproveite sua Verba de Respiro sem culpa excessiva, ela é importante para a sua saúde mental.";
   };
 
@@ -206,44 +227,80 @@ export default function DashboardPage() {
          </CardContent>
       </Card>
 
-      {/* Evolution Chart */}
-      <Card className="border-slate-200 shadow-sm overflow-hidden bg-white">
-         <CardContent className="p-5">
-            <h3 className="font-semibold text-slate-800 text-sm mb-4">Evolução do Saldo (Últimos 6 meses)</h3>
-            <div className="h-40 w-full mt-2" style={{ minWidth: 0, minHeight: 0 }}>
-               <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                 <BarChart data={chartData} margin={{ top: 0, left: -20, right: 0, bottom: 0 }}>
-                   <XAxis 
-                     dataKey="name" 
-                     axisLine={false} 
-                     tickLine={false} 
-                     tick={{ fontSize: 12, fill: '#94a3b8' }} 
-                     dy={10} 
-                   />
-                   <Tooltip 
-                     cursor={{ fill: 'transparent' }}
-                     content={({ active, payload }) => {
-                       if (active && payload && payload.length) {
-                         const val = Number(payload[0].value);
-                         return (
-                           <div className="bg-slate-900 text-white text-xs py-1 px-2 rounded-md shadow-xl border-none">
-                             {formatCurrency(val)}
-                           </div>
-                         );
-                       }
-                       return null;
-                     }} 
-                   />
-                   <Bar dataKey="saldo" radius={[4, 4, 4, 4]}>
-                     {chartData.map((entry, index) => (
-                       <Cell key={`cell-${index}`} fill={entry.saldo >= 0 ? '#10b981' : '#f43f5e'} opacity={index === chartData.length - 1 ? 1 : 0.4} />
-                     ))}
-                   </Bar>
-                 </BarChart>
-               </ResponsiveContainer>
-            </div>
-         </CardContent>
-      </Card>
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Evolution Chart */}
+        <Card className="border-slate-200 shadow-sm overflow-hidden bg-white">
+           <CardContent className="p-5">
+              <h3 className="font-semibold text-slate-800 text-sm mb-4">Evolução do Saldo (Últimos 6 meses)</h3>
+              <div className="h-48 w-full mt-2" style={{ minWidth: 0, minHeight: 0 }}>
+                 <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                   <BarChart data={chartData} margin={{ top: 0, left: -20, right: 0, bottom: 0 }}>
+                     <XAxis 
+                       dataKey="name" 
+                       axisLine={false} 
+                       tickLine={false} 
+                       tick={{ fontSize: 12, fill: '#94a3b8' }} 
+                       dy={10} 
+                     />
+                     <Tooltip 
+                       cursor={{ fill: 'transparent' }}
+                       content={({ active, payload }) => {
+                         if (active && payload && payload.length) {
+                           const val = Number(payload[0].value);
+                           return (
+                             <div className="bg-slate-900 text-white text-xs py-1 px-2 rounded-md shadow-xl border-none">
+                               {formatCurrency(val)}
+                             </div>
+                           );
+                         }
+                         return null;
+                       }} 
+                     />
+                     <Bar dataKey="saldo" radius={[4, 4, 4, 4]}>
+                       {chartData.map((entry, index) => (
+                         <Cell key={`cell-${index}`} fill={entry.saldo >= 0 ? '#10b981' : '#f43f5e'} opacity={index === chartData.length - 1 ? 1 : 0.4} />
+                       ))}
+                     </Bar>
+                   </BarChart>
+                 </ResponsiveContainer>
+              </div>
+           </CardContent>
+        </Card>
+
+        {/* Categories Pie Chart */}
+        <Card className="border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden bg-white dark:bg-slate-900">
+           <CardContent className="p-5 flex flex-col h-full">
+              <h3 className="font-semibold text-slate-800 dark:text-slate-200 text-sm mb-4">Despesas por Categoria</h3>
+              {categoryData.length > 0 ? (
+                <div className="h-48 w-full flex-1" style={{ minWidth: 0, minHeight: 0 }}>
+                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                      <PieChart>
+                        <Pie
+                          data={categoryData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={2}
+                          dataKey="value"
+                        >
+                          {categoryData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                      </PieChart>
+                   </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-sm text-slate-400">
+                  Sem despesas no mês
+                </div>
+              )}
+           </CardContent>
+        </Card>
+      </div>
 
       {/* Month Dashboard Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
@@ -292,7 +349,9 @@ export default function DashboardPage() {
              <p className={`text-2xl sm:text-3xl font-bold mt-2 ${realBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                {formatCurrency(realBalance)}
              </p>
-             <p className="text-xs text-slate-500 mt-2">Previsão no fim do mês.</p>
+             <p className="text-xs text-slate-500 mt-2">
+               {savingsPercentage > 0 ? `Isso representa ${savingsPercentage.toFixed(1)}% da sua renda real.` : "Previsão no fim do mês."}
+             </p>
            </CardContent>
         </Card>
       </div>
@@ -363,8 +422,31 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Timeline / Transactions List */}
-      <h2 className="text-lg font-bold text-slate-900 pt-4 px-1">Contas do Mês ({monthTransactions.length})</h2>
+      {/* Timeline / Transactions List Header with Export Button */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 px-1">
+        <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">Contas do Mês ({monthTransactions.length})</h2>
+        <Button 
+           variant="outline" 
+           className="shadow-sm gap-2"
+           onClick={() => {
+              const headers = "Data,Descrição,Categoria,Tipo,Valor\n";
+              const rows = monthTransactions.map(t => `${t.date},"${t.description}",${t.category || ''},${t.type},${t.amount}`);
+              const csvContent = headers + rows.join("\n");
+              const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+              const link = document.createElement("a");
+              const url = URL.createObjectURL(blob);
+              link.setAttribute("href", url);
+              link.setAttribute("download", `Transacoes_${monthYearString.replace(' ', '_')}.csv`);
+              link.style.visibility = 'hidden';
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+           }}
+        >
+           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-download"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+           Exportar CSV
+        </Button>
+      </div>
 
       <div className="space-y-3">
         {monthTransactions.length === 0 ? (
