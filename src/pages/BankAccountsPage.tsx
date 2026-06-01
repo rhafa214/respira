@@ -140,24 +140,17 @@ export default function BankAccountsPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Dialog open={openFinanceDialog} onOpenChange={setOpenFinanceDialog}>
+          <Dialog open={openFinanceDialog && !connectToken} onOpenChange={(open) => {
+             if (!open) setOpenFinanceDialog(false);
+          }}>
             <DialogTrigger asChild>
-              <Button variant="outline" className="gap-2 shrink-0 bg-white dark:bg-slate-900 border-indigo-200 dark:border-indigo-900 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50">
+              <Button variant="outline" className="gap-2 shrink-0 bg-white dark:bg-slate-900 border-indigo-200 dark:border-indigo-900 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50" onClick={() => setOpenFinanceDialog(true)}>
                 <LinkIcon className="w-4 h-4" />
                 <span className="hidden sm:inline">Open Finance</span>
                 <span className="sm:hidden">Sincronizar</span>
               </Button>
             </DialogTrigger>
-             <DialogContent className={connectToken ? "sm:max-w-[800px] h-[80vh] w-[95vw] p-0" : ""}>
-               {connectToken ? (
-                  <div className="w-full h-full min-h-[500px]">
-                     <PluggyConnect
-                        connectToken={connectToken}
-                        onSuccess={handlePluggySuccess}
-                        onError={handlePluggyError}
-                     />
-                  </div>
-               ) : (
+             <DialogContent>
                  <>
                    <DialogHeader>
                      <DialogTitle>Sincronização com Open Finance</DialogTitle>
@@ -184,9 +177,26 @@ export default function BankAccountsPage() {
                      </Button>
                    </DialogFooter>
                  </>
-               )}
             </DialogContent>
           </Dialog>
+
+          {connectToken && (
+             <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/60 p-4">
+                <div className="flex justify-end w-full max-w-4xl mb-2">
+                   <Button variant="ghost" className="text-white hover:bg-white/20 px-3 py-1 bg-black/40 rounded-full" onClick={() => setConnectToken("")}>
+                      Cancelar e Fechar X
+                   </Button>
+                </div>
+                <div className="w-full h-full max-w-4xl bg-white rounded-xl overflow-hidden shadow-2xl relative">
+                   <PluggyConnect
+                      connectToken={connectToken}
+                      onSuccess={handlePluggySuccess}
+                      onError={handlePluggyError}
+                      onClose={() => setConnectToken("")}
+                   />
+                </div>
+             </div>
+          )}
 
           <Dialog open={openDialog} onOpenChange={setOpenDialog}>
             <DialogTrigger asChild>

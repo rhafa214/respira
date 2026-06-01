@@ -1,6 +1,6 @@
 import { Link, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Heart, ShieldCheck, Sparkles, LayoutDashboard, Target, Loader2, X, Lock } from "lucide-react";
+import { Leaf, ShieldCheck, Sparkles, LayoutDashboard, Target, Loader2, X, Lock } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { useState } from "react";
 
@@ -31,7 +31,7 @@ export default function LandingPage() {
       <nav className="fixed top-0 left-0 right-0 py-4 px-6 md:px-12 flex items-center justify-between bg-white/80 backdrop-blur-md border-b border-slate-100 z-50">
         <div className="flex items-center gap-2">
           <div className="bg-emerald-500 p-1.5 rounded-lg text-white">
-            <Heart className="w-5 h-5" />
+            <Leaf className="w-5 h-5" />
           </div>
           <span className="font-bold text-xl tracking-tight text-slate-800">Respira</span>
         </div>

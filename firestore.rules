@@ -155,5 +155,13 @@ service cloud.firestore {
       allow update: if isValidId(expenseId) && isOwner(existing().userId) && incoming().userId == existing().userId;
       allow delete: if isValidId(expenseId) && isOwner(existing().userId);
     }
+
+    match /budgets/{budgetId} {
+      allow get: if isValidId(budgetId) && isOwner(existing().userId);
+      allow list: if isVerifiedUser();
+      allow create: if isVerifiedUser();
+      allow update: if isValidId(budgetId) && isOwner(existing().userId) && incoming().userId == existing().userId;
+      allow delete: if isValidId(budgetId) && isOwner(existing().userId);
+    }
   }
 }

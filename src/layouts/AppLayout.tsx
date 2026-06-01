@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, WalletCards, TrendingDown, Target, User, LifeBuoy, Bell, Sparkles, LogOut, ArrowLeftRight, Repeat, Moon, Sun, Landmark } from "lucide-react";
+import { LayoutDashboard, WalletCards, TrendingDown, Target, User, LifeBuoy, Bell, Sparkles, LogOut, ArrowLeftRight, Repeat, Moon, Sun, Landmark, Leaf } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/AuthProvider";
 import { GlobalChatFAB } from "@/components/GlobalChatFAB";
@@ -28,7 +28,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="flex items-center justify-between px-2 mb-10">
           <div className="flex items-center gap-3">
              <div className="bg-emerald-500/10 p-2 rounded-xl text-emerald-600">
-               <LifeBuoy className="w-6 h-6" />
+               <Leaf className="w-6 h-6" />
              </div>
              <span className="font-semibold text-xl tracking-tight text-slate-800 dark:text-slate-100">Respira</span>
           </div>
@@ -84,7 +84,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <header className="md:hidden flex items-center justify-between p-4 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 z-10 transition-colors">
           <div className="flex items-center gap-2">
             <div className="bg-emerald-500/10 p-1.5 rounded-lg text-emerald-600">
-              <LifeBuoy className="w-5 h-5" />
+              <Leaf className="w-5 h-5" />
             </div>
             <span className="font-semibold text-lg tracking-tight text-slate-800 dark:text-slate-100">Respira</span>
           </div>
