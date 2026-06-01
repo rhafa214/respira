@@ -12,12 +12,21 @@ export function useCollection<T>(collectionName: string) {
   useEffect(() => {
     if (!user) return;
     
+    let isMounted = true;
+    const timeoutId = setTimeout(() => {
+      if (isMounted && loading) {
+        setLoading(false);
+        setError("O servidor demorou muito para responder. Verifique sua conexão à internet ou se algum bloqueador de anúncios (AdBlock, Brave) está impedindo o acesso ao Firebase.");
+      }
+    }, 10000);
+
     const q = query(
       collection(db, collectionName),
       where("userId", "==", user.uid)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (!isMounted) return;
       const results: T[] = [];
       snapshot.forEach((doc) => {
         results.push({ id: doc.id, ...doc.data() } as unknown as T);
@@ -26,13 +35,18 @@ export function useCollection<T>(collectionName: string) {
       setLoading(false);
       setError(null);
     }, (err) => {
+      if (!isMounted) return;
       console.error(err);
       setError(err instanceof Error ? err.message : String(err));
       setLoading(false);
       handleFirestoreError(err, OperationType.LIST, collectionName);
     });
 
-    return () => unsubscribe();
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+      unsubscribe();
+    };
   }, [collectionName, user]);
 
   const add = async (item: Omit<T, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
