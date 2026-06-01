@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from "@/components/ui/label";
 import { useMonth } from "@/components/MonthContext";
 import { useAuth } from "@/components/AuthProvider";
+import { getCategoryIcon, getCategoryColor } from "@/lib/categories";
 
 type FixedExpense = {
   id?: string;
@@ -155,8 +156,8 @@ export default function FixedExpensesPage() {
                {fixedExpenses.map(expense => (
                  <div key={expense.id} className="p-5 sm:px-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50 transition-colors">
                     <div className="flex items-center gap-4">
-                       <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
-                          <CheckCircle2 className="w-6 h-6" />
+                       <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border ${getCategoryColor(expense.category || expense.description, expense.type)}`}>
+                          {getCategoryIcon(expense.category || expense.description, expense.type, "w-6 h-6")}
                        </div>
                        <div>
                          <h4 className="font-bold text-slate-800">{expense.description}</h4>

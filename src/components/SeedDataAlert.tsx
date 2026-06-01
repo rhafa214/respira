@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useCollection } from "@/hooks/useFirestore";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, Loader2, RefreshCw } from "lucide-react";
+import { AlertCircle, Loader2, RefreshCw, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { format } from "date-fns";
 
@@ -9,8 +9,15 @@ export function SeedDataAlert() {
   const { data: transactions, add: addTx, remove: removeTx, loading: txLoading } = useCollection<any>('transactions');
   const { data: debts, add: addDebt, remove: removeDebt, loading: dbLoading } = useCollection<any>('debts');
   const [loading, setLoading] = useState(false);
+  const [localDismissed, setLocalDismissed] = useState(false);
 
   if (txLoading || dbLoading) return null;
+  if (transactions.length > 5 || localStorage.getItem("seedDismissed") === "true" || localDismissed) return null;
+
+  const handleDismiss = () => {
+    localStorage.setItem("seedDismissed", "true");
+    setLocalDismissed(true);
+  };
 
   const handleSeed = async () => {
     setLoading(true);
@@ -70,7 +77,10 @@ export function SeedDataAlert() {
   };
 
   return (
-    <Card className="mb-6 border-amber-200 bg-amber-50/50">
+    <Card className="mb-6 border-amber-200 bg-amber-50/50 relative">
+      <button onClick={handleDismiss} className="absolute top-2 right-2 p-1 rounded-full text-amber-500 hover:bg-amber-100 transition-colors">
+        <X className="w-4 h-4" />
+      </button>
       <CardContent className="p-4 sm:p-6 flex flex-col sm:flex-row items-center gap-4 justify-between">
         <div className="flex items-center gap-4">
           <div className="bg-amber-100 p-3 rounded-full text-amber-600">

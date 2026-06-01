@@ -124,6 +124,14 @@ service cloud.firestore {
       allow delete: if isValidId(transactionId) && isOwner(existing().userId);
     }
     
+    match /bank_accounts/{accountId} {
+      allow get: if isValidId(accountId) && isOwner(existing().userId);
+      allow list: if isVerifiedUser();
+      allow create: if isVerifiedUser() && incoming().keys().hasAll(['userId', 'name', 'type', 'balance']);
+      allow update: if isValidId(accountId) && isOwner(existing().userId) && incoming().userId == existing().userId;
+      allow delete: if isValidId(accountId) && isOwner(existing().userId);
+    }
+    
     match /debts/{debtId} {
       allow get: if isValidId(debtId) && isOwner(existing().userId);
       allow list: if isVerifiedUser();

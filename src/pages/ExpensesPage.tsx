@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from "@/components/ui/label";
 import { useMonth } from "@/components/MonthContext";
 import { format } from "date-fns";
+import { getCategoryIcon, getCategoryColor } from "@/lib/categories";
 
 type Transaction = {
   id?: string;
@@ -52,29 +53,6 @@ export default function ExpensesPage() {
     setAdding(false);
     setOpenDialog(false);
     setNewTx({ type: 'expense', category: 'Alimentação' });
-  };
-
-  const getIcon = (category: string) => {
-    switch (category) {
-      case 'Alimentação': return <ShoppingCart className="w-6 h-6" />;
-      case 'Moradia': return <Home className="w-6 h-6" />;
-      case 'Transporte': return <Car className="w-6 h-6" />;
-      case 'Saúde': return <Pill className="w-6 h-6" />;
-      case 'Educação': return <GraduationCap className="w-6 h-6" />;
-      default: return <ShoppingCart className="w-6 h-6" />;
-    }
-  };
-
-  const getColor = (category: string, type: string) => {
-    if (type === 'income') return "bg-emerald-100 text-emerald-600";
-    switch (category) {
-      case 'Alimentação': return "bg-orange-100 text-orange-600";
-      case 'Moradia': return "bg-blue-100 text-blue-600";
-      case 'Transporte': return "bg-slate-100 text-slate-600";
-      case 'Saúde': return "bg-rose-100 text-rose-600";
-      case 'Educação': return "bg-indigo-100 text-indigo-600";
-      default: return "bg-slate-100 text-slate-600";
-    }
   };
 
   return (
@@ -184,8 +162,8 @@ export default function ExpensesPage() {
                    return (
                      <div key={expense.id} className="p-4 sm:p-6 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
                         <div className="flex items-center gap-4">
-                           <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${getColor(expense.category, expense.type)}`}>
-                              {getIcon(expense.category)}
+                           <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border ${getCategoryColor(expense.category || expense.description, expense.type)}`}>
+                              {getCategoryIcon(expense.category || expense.description, expense.type, "w-6 h-6")}
                            </div>
                            <div>
                               <p className="font-semibold text-slate-900 dark:text-slate-100">{expense.description}</p>

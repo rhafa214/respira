@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, isSameMonth, parseISO, isPast } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,14 +9,18 @@ import { useAuth } from "@/components/AuthProvider";
 import { SeedDataAlert } from "@/components/SeedDataAlert";
 import { BarChart, Bar, PieChart, Pie, ResponsiveContainer, Tooltip, XAxis, Cell } from "recharts";
 
+import { getCategoryIcon, getCategoryColor } from "@/lib/categories";
 import { useMonth } from "@/components/MonthContext";
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6', '#06b6d4', '#ec4899', '#64748b'];
 
 export default function DashboardPage() {
+  const ObjectEntries = Object.entries;
+  
   const { user } = useAuth();
-  const { data: allTransactions, update: updateTx, loading: txLoading, error: txError } = useCollection<any>('transactions');
+  const { data: allTransactions, update: updateTx, add: addTx, loading: txLoading, error: txError } = useCollection<any>('transactions');
   const { data: debts, loading: dbLoading, error: dbError } = useCollection<any>('debts');
+  const { data: fixedExpenses, loading: fixedLoading } = useCollection<any>('fixed_expenses');
   
   // Use actual current date so the selected month is synced out of the box
   const { currentDate, setCurrentDate } = useMonth();
@@ -38,9 +42,10 @@ export default function DashboardPage() {
       riskColor,
       riskBg,
       chartData,
-      categoryData
+      categoryData,
+      predictiveAlerts
     } = useMemo(() => {
-      if (!allTransactions) return { monthTransactions: [], grossIncome: 0, automaticDeductions: 0, realIncome: 0, totalExpense: 0, totalPaid: 0, totalPending: 0, realBalance: 0, progressPercentage: 0, savingsPercentage: 0, riskLabel: "Calculando...", riskColor: "text-slate-500", riskBg: "bg-slate-50", chartData: [], categoryData: [] };
+      if (!allTransactions) return { monthTransactions: [], grossIncome: 0, automaticDeductions: 0, realIncome: 0, totalExpense: 0, totalPaid: 0, totalPending: 0, realBalance: 0, progressPercentage: 0, savingsPercentage: 0, riskLabel: "Calculando...", riskColor: "text-slate-500", riskBg: "bg-slate-50", chartData: [], categoryData: [], predictiveAlerts: [] };
     
     // Filter by current month
     const currentMonthTxs = allTransactions.filter(t => {
@@ -83,10 +88,36 @@ export default function DashboardPage() {
       value: categoryMap[key]
     })).sort((a, b) => b.value - a.value);
 
-    const realInc = grossInc - autoDed;
+      const realInc = grossInc - autoDed;
     // Livre real = Receita Total Disponível - Total Comprometido
     const realBalance = realInc - expAll; 
     const progress = expAll > 0 ? Math.round((expPaid / expAll) * 100) : 0;
+
+    // Predictive Alerts Logic
+    const upcomingBills = currentMonthTxs.filter(tx => 
+      tx.type === "expense" && 
+      tx.status !== "paid" && 
+      new Date(tx.date).getTime() <= new Date().getTime() + 2 * 24 * 60 * 60 * 1000
+    ).map(tx => `Atenção: Sua conta "${tx.description}" ${new Date(tx.date).getTime() < new Date().getTime() ? 'venceu ou vence hoje' : 'vence em breve'} (R$ ${Number(tx.amount).toFixed(2).replace('.',',')}) e não foi marcada como paga.`);
+    
+    // Budget constraints warning
+    const budgetAlerts: string[] = [];
+    if (Object.keys(categoryMap).length > 0 && realInc > 0) {
+      const sortedCats = Object.entries(categoryMap).sort((a,b) => b[1] - a[1]);
+      if (sortedCats.length > 0) {
+        const [highestCategory, amount] = sortedCats[0];
+        const ratio = amount / realInc;
+        if (ratio > 0.4) {
+          budgetAlerts.push(`Cuidado: você já gastou ${(ratio * 100).toFixed(0)}% do seu cenário flexível só com ${highestCategory}. Se continuar nesse ritmo, faltará dinheiro.`);
+        }
+      }
+      
+      if (expAll > realInc * 0.85 && expAll < realInc) {
+        budgetAlerts.push(`Cuidado: Você já comprometeu ${((expAll/realInc)*100).toFixed(0)}% do seu orçamento flexível este mês.`);
+      }
+    }
+    
+    const predictiveAlerts = Array.from(new Set([...upcomingBills, ...budgetAlerts]));
 
     // Build chart data for the last 6 months
     const last6Months = Array.from({length: 6}).map((_, i) => subMonths(currentDate, 5 - i));
@@ -142,12 +173,45 @@ export default function DashboardPage() {
       riskColor: rColor,
       riskBg: rBg,
       chartData,
-      categoryData
+      categoryData,
+      predictiveAlerts
     };
   }, [allTransactions, currentDate]);
 
   const firstName = user?.displayName ? user.displayName.split(' ')[0] : 'Usuário';
   const formatCurrency = (val: number) => `R$ ${val.toFixed(2).replace('.', ',')}`;
+
+  // Sincronização Automática de Despesas Fixas
+  useEffect(() => {
+    if (txLoading || fixedLoading || !allTransactions || !fixedExpenses) return;
+
+    const currentMonthStr = format(currentDate, "yyyy-MM");
+    
+    const missingExpenses = fixedExpenses.filter(fe => {
+      const alreadyExists = allTransactions.some(tx => 
+        tx.date.substring(0, 7) === currentMonthStr && 
+        (tx.fixedExpenseId === fe.id || (tx.description === fe.description && tx.amount === fe.amount && tx.type === fe.type))
+      );
+      return !alreadyExists;
+    });
+
+    if (missingExpenses.length > 0) {
+      const syncFixed = async () => {
+        for (const fe of missingExpenses) {
+          await addTx({
+            description: fe.description,
+            amount: fe.amount,
+            category: fe.category,
+            type: fe.type,
+            date: `${currentMonthStr}-01`,
+            status: 'pending',
+            fixedExpenseId: fe.id
+          });
+        }
+      };
+      syncFixed();
+    }
+  }, [allTransactions, fixedExpenses, currentDate, txLoading, fixedLoading, addTx]);
 
   const handleMarkAsPaid = async (txId: string) => {
     await updateTx(txId, { status: "paid" });
@@ -345,12 +409,12 @@ export default function DashboardPage() {
               <div className="w-16 h-16 rounded-full bg-emerald-500"></div>
            </div>
            <CardContent className="p-4 sm:p-5 flex flex-col justify-between h-full relative z-10">
-             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Saldo Livre Real</p>
+             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Previsão Saldo Fim do Mês</p>
              <p className={`text-2xl sm:text-3xl font-bold mt-2 ${realBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                {formatCurrency(realBalance)}
              </p>
              <p className="text-xs text-slate-500 mt-2">
-               {savingsPercentage > 0 ? `Isso representa ${savingsPercentage.toFixed(1)}% da sua renda real.` : "Previsão no fim do mês."}
+               {savingsPercentage > 0 ? `Isso representa ${savingsPercentage.toFixed(1)}% da sua renda real.` : "Projetado quando todas as contas pendentes do mês forem pagas."}
              </p>
            </CardContent>
         </Card>
@@ -406,6 +470,23 @@ export default function DashboardPage() {
           </Card>
         </div>
       </div>
+
+      {/* Alertas Preditivos */}
+      {predictiveAlerts.length > 0 && (
+         <div className="space-y-3 mt-6">
+            <h3 className="font-semibold text-slate-800 text-sm">Alertas Preditivos do Sistema</h3>
+            {predictiveAlerts.map((alert, idx) => (
+               <Card key={idx} className="border-orange-200 bg-orange-50/80 shadow-none">
+                  <CardContent className="p-3 sm:p-4 flex items-start gap-3">
+                     <div className="bg-orange-100 p-2 rounded-xl text-orange-600 shrink-0 mt-0.5">
+                        <AlertCircle className="w-4 h-4" />
+                     </div>
+                     <p className="text-sm text-orange-900 leading-relaxed">{alert}</p>
+                  </CardContent>
+               </Card>
+            ))}
+         </div>
+      )}
 
       {/* Alerta Julho */}
       <Card className="border-orange-200 bg-orange-50 mt-6 shadow-sm">
@@ -469,16 +550,8 @@ export default function DashboardPage() {
                 <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
                   <div className="flex items-center gap-4">
                     {/* Icon */}
-                    <div className={`p-3 rounded-2xl shrink-0 ${
-                      isIncome ? 'bg-emerald-100 text-emerald-600' :
-                      isDeduction ? 'bg-rose-200 text-rose-700' :
-                      isPaid ? 'bg-slate-200 text-slate-500' :
-                      'bg-orange-100 text-orange-600'
-                    }`}>
-                      {isIncome ? <ArrowUpRight className="w-5 h-5" /> :
-                       isDeduction ? <ArrowDownRight className="w-5 h-5" /> :
-                       isPaid ? <CheckCircle2 className="w-5 h-5" /> :
-                       <Clock className="w-5 h-5" />}
+                    <div className={`p-3 rounded-2xl shrink-0 ${isPaid && !isIncome && !isDeduction ? 'bg-slate-200 text-slate-500 opacity-60' : getCategoryColor(tx.category || tx.description, tx.type)}`}>
+                      {getCategoryIcon(tx.category || tx.description, tx.type)}
                     </div>
                     
                     {/* Details */}

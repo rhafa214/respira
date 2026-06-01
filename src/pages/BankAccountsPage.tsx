@@ -50,7 +50,11 @@ export default function BankAccountsPage() {
       }
       
       if (!response.ok) {
-        throw new Error(data.message || data.error || "Erro de configuração no servidor.");
+        let msg = data.message || data.error;
+        if (!msg) {
+            msg = `Erro do Servidor (${response.status}): ${text.slice(0,100)}`;
+        }
+        throw new Error(msg);
       }
 
       setConnectToken(data.accessToken);
