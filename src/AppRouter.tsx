@@ -8,6 +8,7 @@ import GoalsPage from "@/pages/GoalsPage";
 import AssistantPage from "@/pages/AssistantPage";
 import { AuthProvider, useAuth } from "@/components/AuthProvider";
 import { ChatProvider } from "@/components/ChatContext";
+import { MonthProvider } from "@/components/MonthContext";
 import { Loader2 } from "lucide-react";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -32,9 +33,10 @@ export function AppRouter() {
   return (
     <AuthProvider>
       <ChatProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
+        <MonthProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
           
           {/* App Routes wrapped in AppLayout and ProtectedRoute */}
           <Route
@@ -117,9 +119,10 @@ export function AppRouter() {
             }
           />
 
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+        </MonthProvider>
       </ChatProvider>
     </AuthProvider>
   );

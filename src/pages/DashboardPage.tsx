@@ -9,13 +9,15 @@ import { useAuth } from "@/components/AuthProvider";
 import { SeedDataAlert } from "@/components/SeedDataAlert";
 import { BarChart, Bar, ResponsiveContainer, Tooltip, XAxis, Cell } from "recharts";
 
+import { useMonth } from "@/components/MonthContext";
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const { data: allTransactions, update: updateTx, loading: txLoading, error: txError } = useCollection<any>('transactions');
   const { data: debts, loading: dbLoading, error: dbError } = useCollection<any>('debts');
   
-  // Start on June 2026
-  const [currentDate, setCurrentDate] = useState(new Date("2026-06-08T12:00:00Z"));
+  // Use actual current date so the selected month is synced out of the box
+  const { currentDate, setCurrentDate } = useMonth();
 
   const monthYearString = format(currentDate, "MMMM yyyy", { locale: ptBR });
   
