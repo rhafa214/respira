@@ -119,7 +119,9 @@ export default function AssistantPage() {
             amount: { type: Type.NUMBER, description: "O novo valor da transação, se houver alteração." },
             category: { type: Type.STRING, description: "A nova categoria." },
             description: { type: Type.STRING, description: "A nova descrição." },
-            installmentInfo: { type: Type.STRING, description: "A nova informação de parcela ex: '8/36'." }
+            installmentInfo: { type: Type.STRING, description: "A nova informação de parcela ex: '8/36'." },
+            status: { type: Type.STRING, description: "Status pago ('paid') ou pendente ('pending')" },
+            date: { type: Type.STRING, description: "YYYY-MM-DD" }
           },
           required: ["transactionId"]
         }
@@ -179,6 +181,8 @@ export default function AssistantPage() {
                if (args.category !== undefined) updateData.category = args.category;
                if (args.description !== undefined) updateData.description = args.description;
                if (args.installmentInfo !== undefined) updateData.installmentInfo = args.installmentInfo;
+               if (args.status !== undefined) updateData.status = args.status;
+               if (args.date !== undefined) updateData.date = args.date;
                
                await updateDoc(doc(db, "transactions", args.transactionId), updateData);
                updatedCount++;

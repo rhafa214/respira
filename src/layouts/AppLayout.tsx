@@ -11,7 +11,6 @@ import { useTheme } from "@/components/ThemeProvider";
 const navItems = [
   { icon: LayoutDashboard, label: "Mês Atual", path: "/app" },
   { icon: ArrowLeftRight, label: "Gastos", path: "/app/lancamentos" },
-  { icon: Repeat, label: "Contas Fixas", path: "/app/fixas" },
   { icon: Target, label: "Orçamentos", path: "/app/orcamento" },
   { icon: Landmark, label: "Bancos e Cartões", path: "/app/bancos" },
   { icon: Target, label: "Sonhos e Metas", path: "/app/metas" },

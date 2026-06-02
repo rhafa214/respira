@@ -9,7 +9,6 @@ import GoalsPage from "@/pages/GoalsPage";
 import WishlistPage from "@/pages/WishlistPage";
 import AssistantPage from "@/pages/AssistantPage";
 import BudgetPage from "@/pages/BudgetPage";
-import FixedExpensesPage from "@/pages/FixedExpensesPage";
 import { AuthProvider, useAuth } from "@/components/AuthProvider";
 import { ChatProvider } from "@/components/ChatContext";
 import { MonthProvider } from "@/components/MonthContext";
@@ -89,16 +88,6 @@ export function AppRouter() {
               <ProtectedRoute>
                 <AppLayout>
                   <BudgetPage />
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/app/fixas"
-            element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <FixedExpensesPage />
                 </AppLayout>
               </ProtectedRoute>
             }

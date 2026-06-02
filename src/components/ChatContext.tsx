@@ -108,16 +108,19 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                   }
                 },
                 {
-                  name: "updateTransactionStatus",
-                  description: "Atualiza o status de uma transação existente (ex: de pending para paid)",
+                  name: "updateTransaction",
+                  description: "Atualiza completamente uma transação existente (nome, valor, categoria, status, parcelas)",
                   parameters: {
                     type: Type.OBJECT,
                     properties: {
                       id: { type: Type.STRING, description: "A ID da transação existente retornada no contexto" },
+                      description: { type: Type.STRING },
+                      amount: { type: Type.NUMBER },
                       status: { type: Type.STRING, description: "paid, pending, late" },
-                      amount: { type: Type.NUMBER, description: "Pode atualizar o valor da transação se variar" }
+                      date: { type: Type.STRING, description: "YYYY-MM-DD" },
+                      installmentInfo: { type: Type.STRING, description: "Informações de parcela, ex: '1/12'" }
                     },
-                    required: ["id", "status"]
+                    required: ["id"]
                   }
                 }
               ]
@@ -139,11 +142,16 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               toolResults.push({ call, result: "Falha ao criar transação." });
             }
           }
-          if (call.name === "updateTransactionStatus") {
+          if (call.name === "updateTransaction") {
              try {
                 const docRef = doc(db, "transactions", args.id);
-                const updates: any = { status: args.status };
+                // Extract only what was passed
+                const updates: any = {};
+                if (args.status) updates.status = args.status;
                 if (args.amount) updates.amount = args.amount;
+                if (args.description) updates.description = args.description;
+                if (args.date) updates.date = args.date;
+                if (args.installmentInfo) updates.installmentInfo = args.installmentInfo;
                 await updateDoc(docRef, updates);
                 toolResults.push({ call, result: `Transação ${args.id} atualizada com sucesso.` });
              } catch(e) {

@@ -20,7 +20,6 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { data: allTransactions, update: updateTx, add: addTx, loading: txLoading, error: txError } = useCollection<any>('transactions');
   const { data: debts, loading: dbLoading, error: dbError } = useCollection<any>('debts');
-  const { data: fixedExpenses, loading: fixedLoading } = useCollection<any>('fixed_expenses');
   
   // Use actual current date so the selected month is synced out of the box
   const { currentDate, setCurrentDate } = useMonth();
@@ -180,38 +179,6 @@ export default function DashboardPage() {
 
   const firstName = user?.displayName ? user.displayName.split(' ')[0] : 'Usuário';
   const formatCurrency = (val: number) => `R$ ${val.toFixed(2).replace('.', ',')}`;
-
-  // Sincronização Automática de Despesas Fixas
-  useEffect(() => {
-    if (txLoading || fixedLoading || !allTransactions || !fixedExpenses) return;
-
-    const currentMonthStr = format(currentDate, "yyyy-MM");
-    
-    const missingExpenses = fixedExpenses.filter(fe => {
-      const alreadyExists = allTransactions.some(tx => 
-        tx.date.substring(0, 7) === currentMonthStr && 
-        (tx.fixedExpenseId === fe.id || (tx.description === fe.description && tx.amount === fe.amount && tx.type === fe.type))
-      );
-      return !alreadyExists;
-    });
-
-    if (missingExpenses.length > 0) {
-      const syncFixed = async () => {
-        for (const fe of missingExpenses) {
-          await addTx({
-            description: fe.description,
-            amount: fe.amount,
-            category: fe.category,
-            type: fe.type,
-            date: `${currentMonthStr}-01`,
-            status: 'pending',
-            fixedExpenseId: fe.id
-          });
-        }
-      };
-      syncFixed();
-    }
-  }, [allTransactions, fixedExpenses, currentDate, txLoading, fixedLoading, addTx]);
 
   const handleMarkAsPaid = async (txId: string) => {
     await updateTx(txId, { status: "paid" });
