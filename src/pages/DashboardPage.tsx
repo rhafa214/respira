@@ -42,11 +42,13 @@ import {
   ReceiptText,
   Bot,
   Wallet,
+  Bell,
 } from "lucide-react";
 
 import { useCollection } from "@/hooks/useFirestore";
 import { useAuth } from "@/components/AuthProvider";
 import { SeedDataAlert } from "@/components/SeedDataAlert";
+import { TransactionStack } from "@/components/TransactionStack";
 import {
   BarChart,
   Bar,
@@ -364,6 +366,24 @@ export default function DashboardPage() {
   const formatCurrency = (val: number) =>
     `R$ ${val.toFixed(2).replace(".", ",")}`;
 
+  const [notificationsEnabled, setNotificationsEnabled] = useState(
+    "Notification" in window ? Notification.permission === "granted" : false,
+  );
+
+  const requestNotifications = async () => {
+    if (!("Notification" in window)) {
+      alert("Seu navegador não suporta notificações.");
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    setNotificationsEnabled(permission === "granted");
+    if (permission === "granted") {
+      new Notification("Lembretes Ativados!", {
+        body: "Você será avisado sobre contas vencendo e pendentes.",
+      });
+    }
+  };
+
   const [isSyncing, setIsSyncing] = useState(false);
 
   const [openSalaryConfig, setOpenSalaryConfig] = useState(false);
@@ -465,6 +485,19 @@ export default function DashboardPage() {
       syncFixed();
     }
   }, [allTransactions, currentDate, txLoading, addTx, isSyncing]);
+
+  useEffect(() => {
+    if (notificationsEnabled && predictiveAlerts.length > 0) {
+      const today = new Date().toDateString();
+      const lastNotified = localStorage.getItem("lastNotificationDate");
+      if (lastNotified !== today) {
+        new Notification("Atenção com suas contas!", {
+          body: predictiveAlerts[0],
+        });
+        localStorage.setItem("lastNotificationDate", today);
+      }
+    }
+  }, [predictiveAlerts, notificationsEnabled]);
 
   const handleMarkAsPaid = async (txId: string) => {
     await updateTx(txId, { status: "paid" });
@@ -739,6 +772,27 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
+                {!notificationsEnabled && "Notification" in window && (
+                  <div className="p-5 bg-blue-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-t border-blue-100">
+                    <div className="flex items-start sm:items-center gap-4">
+                      <div className="bg-white p-2.5 rounded-xl text-blue-500 shadow-sm shrink-0">
+                        <Bell className="w-5 h-5" />
+                      </div>
+                      <p className="text-sm text-blue-800 font-medium leading-relaxed">
+                        Deseja receber lembretes sobre contas pendentes na barra
+                        de notificação do seu celular?
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={requestNotifications}
+                      className="bg-white text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700 shrink-0 whitespace-nowrap w-full sm:w-auto"
+                    >
+                      Ativar Notificações
+                    </Button>
+                  </div>
+                )}
+
                 {predictiveAlerts.length > 0 &&
                   predictiveAlerts.slice(0, 1).map((alert, idx) => (
                     <div
@@ -814,98 +868,10 @@ export default function DashboardPage() {
               <h3 className="text-lg font-bold text-slate-900">Transações</h3>
             </div>
             <div className="space-y-3">
-              {monthTransactions.length === 0 ? (
-                <div className="text-center px-6 py-8 border border-dashed border-slate-200 rounded-[1.5rem]">
-                  <p className="text-slate-500 text-sm">
-                    Nenhum registro encontrado.
-                  </p>
-                </div>
-              ) : (
-                monthTransactions.map((tx: any) => {
-                  const isIncome = tx.type === "income";
-                  const isDeduction = tx.type === "deduction";
-                  const isPaid = tx.status === "paid";
-                  const isPastOrToday =
-                    new Date(tx.date + "T12:00:00").getTime() <=
-                    new Date().getTime();
-                  const isOverdue = !isPaid && !isIncome && isPastOrToday;
-
-                  return (
-                    <div
-                      key={tx.id}
-                      className={`flex items-center justify-between bg-white p-4 rounded-[1.25rem] border shadow-sm transition-all ${isOverdue ? "border-rose-300 ring-2 ring-rose-100 shadow-rose-100/50 relative overflow-hidden" : "border-slate-100"}`}
-                    >
-                      {isOverdue && (
-                        <div className="absolute top-0 right-0 w-8 h-8 bg-rose-50 rounded-bl-[1.25rem] flex items-center justify-center">
-                          <AlertCircle className="w-4 h-4 text-rose-500" />
-                        </div>
-                      )}
-                      <div className="flex items-center gap-4">
-                        <div
-                          className={`p-2.5 rounded-[14px] shrink-0 ${isOverdue ? "bg-rose-100 text-rose-600" : isPaid && !isIncome ? "bg-slate-100 text-slate-400" : getCategoryColor(tx.category || tx.description, tx.type)}`}
-                        >
-                          {getCategoryIcon(
-                            tx.category || tx.description,
-                            tx.type,
-                            "w-5 h-5 stroke-[1.5]",
-                          )}
-                        </div>
-                        <div>
-                          <p
-                            className={`font-semibold text-sm tracking-tight ${isOverdue ? "text-rose-900" : isPaid && !isIncome ? "text-slate-500 line-through" : "text-slate-800"}`}
-                          >
-                            {tx.description}
-                          </p>
-                          <div className="flex flex-wrap items-center gap-2 mt-1">
-                            <p className="text-xs text-slate-400 font-medium">
-                              {new Date(
-                                tx.date + "T12:00:00",
-                              ).toLocaleDateString("pt-BR", {
-                                day: "2-digit",
-                                month: "short",
-                              })}
-                            </p>
-                            {isOverdue && (
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 bg-rose-100 px-1.5 py-0.5 rounded text-left mt-0">
-                                Atrasado
-                              </span>
-                            )}
-                            {!isPaid && !isOverdue && !isIncome && (
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded text-left mt-0">
-                                Pendente
-                              </span>
-                            )}
-                            {!isPaid && isIncome && (
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-violet-500 bg-violet-50 px-1.5 py-0.5 rounded text-left mt-0">
-                                Previsto
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 z-10">
-                        <div className="text-right">
-                          <p
-                            className={`font-bold text-[15px] tracking-tight ${isOverdue ? "text-rose-600" : isIncome ? "text-violet-600" : isDeduction ? "text-rose-600" : "text-slate-800"}`}
-                          >
-                            {isIncome ? "+" : "-"}{" "}
-                            {formatCurrency(Number(tx.amount))}
-                          </p>
-                        </div>
-                        {!isPaid && (
-                          <button
-                            onClick={() => handleMarkAsPaid(tx.id)}
-                            title="Marcar como Pago/Recebido"
-                            className="ml-2 w-8 h-8 rounded-full border-2 border-slate-200 text-slate-300 hover:border-emerald-500 hover:text-emerald-500 hover:bg-emerald-50 flex items-center justify-center shrink-0 transition-all bg-white"
-                          >
-                            <CheckCircle2 className="w-5 h-5" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
+              <TransactionStack
+                transactions={monthTransactions}
+                onMarkAsPaid={handleMarkAsPaid}
+              />
             </div>
           </div>
         </div>
