@@ -6,8 +6,28 @@ import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Sparkles, Send, Loader2, Bot, User } from "lucide-react";
+import { Sparkles, Send, Loader2, Bot, User, Mic, Square, Volume2, Phone, PhoneOff } from "lucide-react";
 import Markdown from "react-markdown";
+
+// Helper for pcm
+function pcmToBase64(pcmData: Float32Array): string {
+  const pcm16 = new Int16Array(pcmData.length);
+  for (let i = 0; i < pcmData.length; i++) {
+    const s = Math.max(-1, Math.min(1, pcmData[i]));
+    pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+  }
+  const buffer = new ArrayBuffer(pcm16.length * 2);
+  const view = new DataView(buffer);
+  for (let i = 0; i < pcm16.length; i++) {
+    view.setInt16(i * 2, pcm16[i], true); // little-endian
+  }
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
 
 export default function AssistantPage() {
   const { user } = useAuth();
@@ -16,18 +36,31 @@ export default function AssistantPage() {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isLiveActive, setIsLiveActive] = useState(false);
+
+  // Live WebSocket
+  const wsRef = useRef<WebSocket | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const processorRef = useRef<ScriptProcessorNode | null>(null);
+  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const nextStartTimeRef = useRef<number>(0);
+
   const bottomRef = useRef<HTMLDivElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  const handleSend = async () => {
-    if (!input.trim() || !user) return;
+  const handleSend = async (audioBase64?: string) => {
+    if ((!input.trim() && !audioBase64) || !user) return;
 
     const userMessage = input.trim();
     setInput("");
-    setMessages(prev => [...prev, { role: "user", text: userMessage }]);
+    setMessages(prev => [...prev, { role: "user", text: userMessage || "🎙️ Áudio enviado" }]);
     setLoading(true);
 
     try {
@@ -47,7 +80,7 @@ export default function AssistantPage() {
       contextStr += `Metas:\n${goals.map(g => `- ${g.title}: R$ ${g.current} de R$ ${g.target}`).join('\n')}\n`;
 
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const promptContext = `${contextStr}\nPergunta do usuário: "${userMessage}"`;
+      const promptContext = `${contextStr}\nPergunta do usuário: "${userMessage || 'Por favor, escute o áudio anexo e siga com a solicitação.'}"`;
 
       const addTransactionDeclaration: FunctionDeclaration = {
         name: "addTransaction",
@@ -82,9 +115,19 @@ export default function AssistantPage() {
         }
       };
 
+      const contents: any[] = [promptContext];
+      if (audioBase64) {
+        contents.push({
+          inlineData: {
+            mimeType: "audio/webm",
+            data: audioBase64
+          }
+        });
+      }
+
       const aiResponse = await ai.models.generateContent({
         model: "gemini-3.1-pro-preview",
-        contents: promptContext,
+        contents: contents,
         config: {
           systemInstruction: "Você é o 'Consultor IA', especialista financeiro. Você pode responder perguntas e ajudar o usuário a registrar ou atualizar transações com as funções fornecidas. Se ele pedir para atualizar ou editar algo, localize o ID na lista e use updateTransaction. Não mencione o ID textualmente na resposta, apenas diga que alterou de forma amigável e qual foi a alteração.",
           temperature: 0.7,
@@ -152,19 +195,196 @@ export default function AssistantPage() {
     }
   };
 
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = () => {
+          const base64Audio = (reader.result as string).split(',')[1];
+          handleSend(base64Audio);
+        };
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (err) {
+      console.error("Erro ao acessar o microfone", err);
+      setMessages(prev => [...prev, { role: "model", text: "Não foi possível acessar seu microfone. Verifique as permissões." }]);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const toggleRecording = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  };
+
+  const playAudioChunk = (audioCtx: AudioContext, base64Audio: string) => {
+    try {
+      const binary = atob(base64Audio);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      const buffer = bytes.buffer;
+      const int16Array = new Int16Array(buffer);
+      const float32Array = new Float32Array(int16Array.length);
+      for (let i = 0; i < int16Array.length; i++) {
+        float32Array[i] = int16Array[i] / 32768.0;
+      }
+      const audioBuffer = audioCtx.createBuffer(1, float32Array.length, 24000);
+      audioBuffer.getChannelData(0).set(float32Array);
+      const sourceN = audioCtx.createBufferSource();
+      sourceN.buffer = audioBuffer;
+      sourceN.connect(audioCtx.destination);
+      const startTime = Math.max(audioCtx.currentTime, nextStartTimeRef.current);
+      sourceN.start(startTime);
+      nextStartTimeRef.current = startTime + audioBuffer.duration;
+    } catch(e) {
+      console.error(e);
+    }
+  };
+
+  const startLiveSession = async () => {
+    if (isLiveActive) return;
+    try {
+      const contextStr = encodeURIComponent(user ? `Nome: ${user.displayName || 'Vitor'}` : "");
+      const wsUrl = `wss://${window.location.host}/live?context=${contextStr}`;
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      const audioCtx = new AudioContext({ sampleRate: 16000 });
+      audioCtxRef.current = audioCtx;
+      nextStartTimeRef.current = audioCtx.currentTime;
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, sampleRate: 16000 } });
+      streamRef.current = stream;
+
+      const source = audioCtx.createMediaStreamSource(stream);
+      sourceRef.current = source;
+      const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+      processorRef.current = processor;
+
+      source.connect(processor);
+      processor.connect(audioCtx.destination);
+
+      processor.onaudioprocess = (e) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          const base64 = pcmToBase64(e.inputBuffer.getChannelData(0));
+          ws.send(JSON.stringify({ audio: base64 }));
+        }
+      };
+
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        if (msg.audio) playAudioChunk(audioCtx, msg.audio);
+        if (msg.interrupted) {
+           nextStartTimeRef.current = audioCtx.currentTime;
+        }
+      };
+      
+      ws.onclose = () => stopLiveSession();
+      ws.onerror = () => stopLiveSession();
+
+      setIsLiveActive(true);
+      setMessages(prev => [...prev, { role: "model", text: "🎙️ (Modo Conversa Ativo) Olá! Estou te ouvindo, o que manda?" }]);
+    } catch(e) {
+      console.error("Live session failed:", e);
+      setMessages(prev => [...prev, { role: "model", text: "Não foi possível iniciar a conversa. Verifique o microfone." }]);
+    }
+  };
+
+  const stopLiveSession = () => {
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    if (processorRef.current && sourceRef.current) {
+      processorRef.current.disconnect();
+      sourceRef.current.disconnect();
+    }
+    if (audioCtxRef.current) {
+      audioCtxRef.current.close().catch(()=>{});
+      audioCtxRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+    setIsLiveActive(false);
+  };
+
+  const toggleLiveSession = () => {
+    if (isLiveActive) stopLiveSession();
+    else startLiveSession();
+  };
+
+  const speakText = (text: string) => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'pt-BR';
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 flex flex-col h-[calc(100vh-80px)] md:h-screen">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="bg-indigo-100 p-2.5 rounded-xl text-indigo-600">
-           <Sparkles className="w-6 h-6" />
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="bg-indigo-100 p-2.5 rounded-xl text-indigo-600">
+             <Sparkles className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Seu Consultor</h1>
+            <p className="text-sm text-slate-500">Tire dúvidas, peça conselhos ou monte estratégias</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Seu Consultor</h1>
-          <p className="text-sm text-slate-500">Tire dúvidas, peça conselhos ou monte estratégias</p>
-        </div>
+        <Button 
+          onClick={toggleLiveSession}
+          variant="outline"
+          className={`gap-2 rounded-full hidden sm:flex border ${isLiveActive ? 'border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100' : 'border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100'}`}
+        >
+          {isLiveActive ? <PhoneOff className="w-4 h-4" /> : <Phone className="w-4 h-4" />}
+          {isLiveActive ? "Encerrar Chamada" : "Chamada de Voz (Fluida)"}
+        </Button>
       </div>
 
       <Card className="flex-1 flex flex-col min-h-0 relative shadow-sm border border-slate-100">
+        
+        {isLiveActive && (
+          <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center pointer-events-none rounded-xl">
+            <div className="w-32 h-32 rounded-full bg-indigo-100 animate-ping absolute opacity-75"></div>
+            <div className="w-32 h-32 rounded-full bg-indigo-200 flex items-center justify-center relative z-20 shadow-2xl">
+              <Mic className="w-12 h-12 text-indigo-600 animate-pulse" />
+            </div>
+            <p className="mt-8 text-indigo-800 font-medium text-lg tracking-wide z-20 animate-pulse">Consultor está ouvindo você...</p>
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
           {messages.map((m, idx) => (
              <div key={idx} className={`flex gap-4 ${m.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -173,8 +393,13 @@ export default function AssistantPage() {
                </div>
                <div className={`px-5 py-3.5 rounded-2xl max-w-[85%] text-sm sm:text-base ${m.role === 'model' ? 'bg-slate-50 text-slate-800 rounded-tl-sm' : 'bg-emerald-500 text-white rounded-tr-sm'}`}>
                   {m.role === 'model' ? (
-                     <div className="markdown-body prose prose-slate prose-sm sm:prose-base leading-relaxed">
-                       <Markdown>{m.text}</Markdown>
+                     <div className="flex flex-col gap-2">
+                       <div className="markdown-body prose prose-slate prose-sm sm:prose-base leading-relaxed">
+                         <Markdown>{m.text}</Markdown>
+                       </div>
+                       <button onClick={() => speakText(m.text)} className="self-end text-slate-400 hover:text-indigo-600 transition-colors p-1" title="Ouvir mensagem">
+                         <Volume2 className="w-4 h-4" />
+                       </button>
                      </div>
                   ) : (
                      m.text
@@ -197,15 +422,23 @@ export default function AssistantPage() {
         </div>
         
         <div className="p-4 bg-white border-t border-slate-100 rounded-b-3xl">
-           <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="flex gap-3">
+           <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="flex gap-3 items-center">
+             <button
+                type="button"
+                onClick={toggleRecording}
+                disabled={loading}
+                className={`w-12 h-12 rounded-full shrink-0 flex items-center justify-center transition-colors ${isRecording ? 'bg-rose-100 text-rose-600 animate-pulse' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+             >
+                {isRecording ? <Square className="w-5 h-5 fill-current" /> : <Mic className="w-5 h-5" />}
+             </button>
              <Input 
                 className="flex-1 h-12 text-base rounded-full border-slate-200 px-6 focus-visible:ring-indigo-500"
-                placeholder="Pergunte sobre seus limites, como quitar algo, ou se vale a pena gastar..."
+                placeholder={isRecording ? "Gravando áudio..." : "Pergunte sobre seus limites, como organizar suas contas..."}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                disabled={loading}
+                disabled={loading || isRecording}
              />
-             <Button type="submit" size="icon" className="h-12 w-12 rounded-full shrink-0 bg-indigo-600 hover:bg-indigo-700" disabled={loading || !input.trim()}>
+             <Button type="submit" size="icon" className="h-12 w-12 rounded-full shrink-0 bg-indigo-600 hover:bg-indigo-700" disabled={loading || (!input.trim() && !isRecording)}>
                 <Send className="w-5 h-5" />
              </Button>
            </form>

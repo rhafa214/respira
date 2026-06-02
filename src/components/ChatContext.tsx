@@ -13,7 +13,7 @@ interface ChatContextType {
   input: string;
   setInput: (t: string) => void;
   loading: boolean;
-  sendMessage: (text: string) => Promise<void>;
+  sendMessage: (text: string, audioBase64?: string) => Promise<void>;
   toggleChat: () => void;
 }
 
@@ -30,10 +30,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const toggleChat = () => setIsOpen(p => !p);
 
-  const sendMessage = async (userMessage: string) => {
-    if (!userMessage.trim() || !user) return;
+  const sendMessage = async (userMessage: string, audioBase64?: string) => {
+    if ((!userMessage.trim() && !audioBase64) || !user) return;
 
-    setMessages(prev => [...prev, { role: "user", text: userMessage }]);
+    setMessages(prev => [...prev, { role: "user", text: userMessage || "🎙️ Áudio enviado" }]);
     setLoading(true);
 
     try {
@@ -55,11 +55,21 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       contextStr += `Lista de Desejos (itens que o usuário quer comprar):\n${JSON.stringify(wishlist)}\n`;
 
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const promptContext = `${contextStr}\nPergunta do usuário: "${userMessage}"`;
+      const promptContext = `${contextStr}\nPergunta do usuário: "${userMessage || 'Por favor, escute o áudio anexo e siga com a solicitação.'}"`;
       
+      const contents: any[] = [promptContext];
+      if (audioBase64) {
+        contents.push({
+          inlineData: {
+            mimeType: "audio/webm",
+            data: audioBase64
+          }
+        });
+      }
+
       const response = await ai.models.generateContent({
         model: "gemini-3.1-pro-preview",
-        contents: promptContext,
+        contents: contents,
         config: {
           systemInstruction: "Aja como Copiloto Financeiro, estratégico, realista e emocionalmente engajado. \n" +
             "Se o usuário relatar que pagou algo, crie ou altere uma transação usando a tool. \n" +

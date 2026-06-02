@@ -1,6 +1,6 @@
 {
   "name": "Respira",
   "description": "Sistema de gestão financeira pessoal humanizado, focado em ajudar pessoas a sair das dívidas e recuperar o controle financeiro com tranquilidade.",
-  "requestFramePermissions": [],
-  "majorCapabilities": []
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
