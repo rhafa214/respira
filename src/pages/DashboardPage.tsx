@@ -140,12 +140,28 @@ export default function DashboardPage() {
       };
 
     // Filter by current month
+    const currMonthStr = format(currentDate, "yyyy-MM");
+
+    // Get all transactions for the currently selected month
     const currentMonthTxs = allTransactions.filter((t) => {
-      // Avoid timezone shift issues by extracting just yyyy-MM
       const tMonth = t.date.substring(0, 7);
-      const currMonth = format(currentDate, "yyyy-MM");
-      return tMonth === currMonth;
+      return tMonth === currMonthStr;
     });
+
+    // Also bring in any UNPAID expense/deduction from PAST months to carry the debt forward
+    const pastOverdueBills = allTransactions.filter(
+      (t) =>
+        (t.type === "expense" || t.type === "deduction") &&
+        t.status !== "paid" &&
+        t.date.substring(0, 7) < currMonthStr,
+    );
+
+    // Combine them so past debts are accounted for in the current month's totals and visible for payment
+    for (const overdue of pastOverdueBills) {
+      if (!currentMonthTxs.find((tx) => tx.id === overdue.id)) {
+        currentMonthTxs.push(overdue);
+      }
+    }
 
     let grossInc = 0;
     let autoDedAll = 0;
@@ -240,8 +256,15 @@ export default function DashboardPage() {
       }
     }
 
+    const pastOverdueAlerts =
+      pastOverdueBills.length > 0
+        ? [
+            `Urgente: Você tem ${pastOverdueBills.length} conta(s) pendente(s) de meses anteriores somando ${formatCurrency(pastOverdueBills.reduce((acc, t) => acc + Number(t.amount), 0))}. Você pode liquidá-las diretamente abaixo na lista de transações.`,
+          ]
+        : [];
+
     const predictiveAlerts = Array.from(
-      new Set([...upcomingBills, ...budgetAlerts]),
+      new Set([...pastOverdueAlerts, ...upcomingBills, ...budgetAlerts]),
     );
 
     // Build chart data for the last 6 months
@@ -390,22 +413,31 @@ export default function DashboardPage() {
     if (txLoading || !allTransactions || isSyncing) return;
 
     const currentMonthStr = format(currentDate, "yyyy-MM");
-    const prevMonthDate = new Date(currentDate);
-    prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
-    const prevMonthStr = format(prevMonthDate, "yyyy-MM");
 
-    const prevFixed = allTransactions.filter(
-      (t) => t.isFixed && t.date.substring(0, 7) === prevMonthStr,
+    // Encontra todos os lançamentos fixos do passado
+    const pastFixed = allTransactions.filter(
+      (t) =>
+        (t.isFixed || t.isRecurring) &&
+        t.date.substring(0, 7) < currentMonthStr,
     );
+
+    // Pega a versão mais recente de cada lançamento fixo (agrupando por descrição)
+    const latestPastFixedMap = new Map();
+    pastFixed.forEach((pf) => {
+      const existing = latestPastFixedMap.get(pf.description);
+      if (!existing || pf.date > existing.date) {
+        latestPastFixedMap.set(pf.description, pf);
+      }
+    });
+
     const currentFixed = allTransactions.filter(
-      (t) => t.isFixed && t.date.substring(0, 7) === currentMonthStr,
+      (t) =>
+        (t.isFixed || t.isRecurring) &&
+        t.date.substring(0, 7) === currentMonthStr,
     );
 
-    const missingFixed = prevFixed.filter(
-      (pf) =>
-        !currentFixed.some(
-          (cf) => cf.description === pf.description && cf.amount === pf.amount,
-        ),
+    const missingFixed = Array.from(latestPastFixedMap.values()).filter(
+      (pf) => !currentFixed.some((cf) => cf.description === pf.description),
     );
 
     if (missingFixed.length > 0) {

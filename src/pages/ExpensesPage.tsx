@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
@@ -135,6 +135,97 @@ export default function ExpensesPage() {
   const [editDialog, setEditDialog] = useState(false);
   const [editTx, setEditTx] = useState<Partial<Transaction> | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  useEffect(() => {
+    // Sincronização Automática de Despesas Fixas (mesmo que na Dashboard)
+    if (loading || !allTransactions || isSyncing) return;
+
+    const currentMonthStr = format(currentDate, "yyyy-MM");
+
+    // Encontra todos os lançamentos fixos do passado
+    const pastFixed = allTransactions.filter(
+      (t) =>
+        (t.isFixed || t.isRecurring) &&
+        t.date.substring(0, 7) < currentMonthStr,
+    );
+
+    // Pega a versão mais recente de cada lançamento fixo (agrupando por descrição)
+    const latestPastFixedMap = new Map();
+    pastFixed.forEach((pf) => {
+      const existing = latestPastFixedMap.get(pf.description);
+      if (!existing || pf.date > existing.date) {
+        latestPastFixedMap.set(pf.description, pf);
+      }
+    });
+
+    const currentFixed = allTransactions.filter(
+      (t) =>
+        (t.isFixed || t.isRecurring) &&
+        t.date.substring(0, 7) === currentMonthStr,
+    );
+
+    const missingFixed = Array.from(latestPastFixedMap.values()).filter(
+      (pf) => !currentFixed.some((cf) => cf.description === pf.description),
+    );
+
+    if (missingFixed.length > 0) {
+      setIsSyncing(true);
+      const syncFixed = async () => {
+        for (const pf of missingFixed) {
+          const newDate = new Date(pf.date + "T12:00:00");
+          newDate.setMonth(currentDate.getMonth());
+          newDate.setFullYear(currentDate.getFullYear());
+
+          await add({
+            description: pf.description,
+            amount: pf.amount,
+            category: pf.category,
+            type: pf.type,
+            date: format(newDate, "yyyy-MM-dd"),
+            status: "pending",
+            isFixed: true,
+            isRecurring: pf.isRecurring,
+            installmentInfo: pf.installmentInfo,
+          } as any);
+        }
+        setIsSyncing(false);
+      };
+      syncFixed();
+    }
+  }, [allTransactions, currentDate, loading, add, isSyncing]);
+
+  useEffect(() => {
+    // One-off data cleanup requested by user for "Ração dos cachorros"
+    if (!allTransactions || localStorage.getItem("racaoCleanupDone")) return;
+
+    const cleanup = async () => {
+      let madeChanges = false;
+      const racaoTxs = allTransactions.filter(
+        (t) => t.description && t.description.toLowerCase().includes("ração"),
+      );
+
+      for (const tx of racaoTxs) {
+        if (!tx.id) continue;
+
+        // Remove from June 2026
+        if (tx.date && tx.date.startsWith("2026-06")) {
+          await remove(tx.id);
+          madeChanges = true;
+        }
+        // Unset isFixed/isRecurring globally
+        else if (tx.isFixed || tx.isRecurring) {
+          await update(tx.id, { isFixed: false, isRecurring: false });
+          madeChanges = true;
+        }
+      }
+
+      localStorage.setItem("racaoCleanupDone", "true");
+    };
+
+    cleanup();
+  }, [allTransactions, remove, update]);
 
   const handlePrevMonth = () => {
     const prev = new Date(currentDate);
@@ -679,10 +770,32 @@ export default function ExpensesPage() {
                       <option value="Presentes/Doações">
                         Presentes/Doações
                       </option>
+                      <option value="Obrigações">Obrigações</option>
                       <option value="Outros">Outros</option>
                     </>
                   )}
                 </select>
+              </div>
+              <div className="flex items-center gap-2 mt-4 pb-2">
+                <input
+                  type="checkbox"
+                  id="isFixedEdit"
+                  checked={editTx.isFixed || editTx.isRecurring || false}
+                  className="w-4 h-4 rounded border-slate-300"
+                  onChange={(e) =>
+                    setEditTx({
+                      ...editTx,
+                      isFixed: e.target.checked,
+                      isRecurring: e.target.checked,
+                    })
+                  }
+                />
+                <Label
+                  htmlFor="isFixedEdit"
+                  className="cursor-pointer font-medium"
+                >
+                  Lançamento Fixo (Mês a Mês)
+                </Label>
               </div>
             </div>
           )}

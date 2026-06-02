@@ -34,6 +34,7 @@ type Loan = {
   remainingInstallments: number;
   totalInstallments: number;
   dueDate: string;
+  startMonth?: string;
 };
 
 export default function LoansPage() {
@@ -56,7 +57,10 @@ export default function LoansPage() {
   >({});
   const [adding, setAdding] = useState(false);
   const [editingLoanId, setEditingLoanId] = useState<string | null>(null);
-  const [toast, setToast] = useState<{show: boolean, message: string}>({show: false, message: ""});
+  const [toast, setToast] = useState<{ show: boolean; message: string }>({
+    show: false,
+    message: "",
+  });
 
   const handleEditClick = (loan: any) => {
     setNewLoan({
@@ -66,6 +70,7 @@ export default function LoansPage() {
       remainingInstallments: loan.remainingInstallments,
       totalInstallments: loan.totalInstallments,
       dueDate: loan.dueDate,
+      startMonth: loan.startMonth || "",
       originalDescription: loan.description,
     } as any);
     setEditingLoanId(loan.id!);
@@ -106,15 +111,25 @@ export default function LoansPage() {
         totalInstallments:
           newLoan.totalInstallments || newLoan.remainingInstallments,
         dueDate: newLoan.dueDate || "10",
+        startMonth: newLoan.startMonth || "",
       } as any);
-
-      // Remove pending transactions
       if (allTransactions) {
         const relatedTxs = allTransactions.filter(
-          (tx: any) => tx.loanId === loanIdToUse && tx.status !== "paid",
+          (tx: any) => tx.loanId === loanIdToUse,
         );
         for (const tx of relatedTxs) {
-          if (tx.id) await removeTx(tx.id);
+          if (tx.id) {
+            if (tx.status !== "paid") {
+              await removeTx(tx.id);
+            } else {
+              // Update paid transactions with the new name/amount just in case they want it to reflect
+              await updateTx(tx.id, {
+                isFixed: true,
+                isRecurring: true,
+                description: `Empréstimo: ${newLoan.bank} ${newLoan.description ? "- " + newLoan.description : ""}`,
+              } as any);
+            }
+          }
         }
       }
     } else {
@@ -127,6 +142,7 @@ export default function LoansPage() {
         totalInstallments:
           newLoan.totalInstallments || newLoan.remainingInstallments,
         dueDate: newLoan.dueDate || "10",
+        startMonth: newLoan.startMonth || "",
       } as any);
       if (addedId && typeof addedId === "string") {
         loanIdToUse = addedId;
@@ -137,10 +153,19 @@ export default function LoansPage() {
       const now = new Date();
       const dueDate = newLoan.dueDate ? parseInt(newLoan.dueDate) : 10;
 
-      let targetMonth = now.getMonth();
-      let targetYear = now.getFullYear();
-      if (now.getDate() > dueDate) {
-        targetMonth += 1;
+      let targetMonth;
+      let targetYear;
+
+      if (newLoan.startMonth) {
+        const [yy, mm] = newLoan.startMonth.split("-");
+        targetYear = parseInt(yy);
+        targetMonth = parseInt(mm) - 1;
+      } else {
+        targetMonth = now.getMonth();
+        targetYear = now.getFullYear();
+        if (now.getDate() > dueDate) {
+          targetMonth += 1;
+        }
       }
 
       const remaining = Number(newLoan.remainingInstallments);
@@ -151,14 +176,26 @@ export default function LoansPage() {
 
       for (let i = 0; i < remaining; i++) {
         let instDate = new Date(targetYear, targetMonth + i, dueDate, 12, 0, 0);
+        const todayDate = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate(),
+          12,
+          0,
+          0,
+        );
         await addTx({
           type: "expense",
           isFixed: true,
+          isRecurring: true,
           category: "Outros",
           description: `Empréstimo: ${newLoan.bank} ${newLoan.description ? "- " + newLoan.description : ""}`,
           amount: Number(newLoan.installmentValue),
           date: format(instDate, "yyyy-MM-dd"),
-          status: i === 0 && now.getDate() >= dueDate ? "paid" : "pending",
+          status:
+            i === 0 && todayDate.getTime() >= instDate.getTime()
+              ? "paid"
+              : "pending",
           installmentInfo: `${currentFixedInstallment + i}/${total}`,
           loanId: loanIdToUse,
         });
@@ -356,6 +393,16 @@ export default function LoansPage() {
                     placeholder="Ex: 10"
                   />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Mês da 1ª Parcela (Opcional)</Label>
+                <Input
+                  type="month"
+                  value={newLoan.startMonth || ""}
+                  onChange={(e) =>
+                    setNewLoan({ ...newLoan, startMonth: e.target.value })
+                  }
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
