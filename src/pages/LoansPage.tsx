@@ -11,6 +11,7 @@ import {
   Trash2,
   HandCoins,
   Pencil,
+  CheckCircle2,
 } from "lucide-react";
 import { useCollection } from "@/hooks/useFirestore";
 import {
@@ -23,7 +24,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 
 type Loan = {
   id?: string;
@@ -55,6 +56,7 @@ export default function LoansPage() {
   >({});
   const [adding, setAdding] = useState(false);
   const [editingLoanId, setEditingLoanId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{show: boolean, message: string}>({show: false, message: ""});
 
   const handleEditClick = (loan: any) => {
     setNewLoan({
@@ -167,6 +169,8 @@ export default function LoansPage() {
     setOpenDialog(false);
     setNewLoan({});
     setEditingLoanId(null);
+    setToast({ show: true, message: "Empréstimo salvo com sucesso!" });
+    setTimeout(() => setToast({ show: false, message: "" }), 3000);
   };
 
   const handleDelete = async (
@@ -256,6 +260,19 @@ export default function LoansPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-12 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-24">
+      <AnimatePresence>
+        {toast.show && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, x: "-50%" }}
+            animate={{ opacity: 1, y: 0, x: "-50%" }}
+            exit={{ opacity: 0, y: -20, x: "-50%" }}
+            className="fixed top-8 left-1/2 z-50 flex items-center gap-2 bg-emerald-50 text-emerald-700 font-medium px-4 py-3 rounded-2xl shadow-lg border border-emerald-100"
+          >
+            <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+            {toast.message}
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">
