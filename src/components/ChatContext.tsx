@@ -38,12 +38,30 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined);
 export function ChatProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "model",
-      text: "Olá! Sou seu Copiloto Financeiro. Diga 'Paguei a internet' ou pergunte 'Qual minha margem real e previsões do mês?'",
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    const saved = localStorage.getItem(`chat_history_${user?.uid || "guest"}`);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {}
+    }
+    return [
+      {
+        role: "model",
+        text: "Olá! Sou seu Copiloto Financeiro. Diga 'Paguei a internet' ou pergunte 'Qual minha margem real e previsões do mês?'",
+      },
+    ];
+  });
+
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem(
+        `chat_history_${user.uid}`,
+        JSON.stringify(messages),
+      );
+    }
+  }, [messages, user]);
+
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
 

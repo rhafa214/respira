@@ -50,6 +50,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { SeedDataAlert } from "@/components/SeedDataAlert";
 import { TransactionStack } from "@/components/TransactionStack";
 import { GamificationWidget } from "@/components/GamificationWidget";
+import { WaterfallChart } from "@/components/WaterfallChart";
 import {
   BarChart,
   Bar,
@@ -120,6 +121,8 @@ export default function DashboardPage() {
     chartData,
     categoryData,
     predictiveAlerts,
+    fixedTotal,
+    variableTotal,
   } = useMemo(() => {
     if (!allTransactions)
       return {
@@ -140,6 +143,8 @@ export default function DashboardPage() {
         chartData: [],
         categoryData: [],
         predictiveAlerts: [],
+        fixedTotal: 0,
+        variableTotal: 0,
       };
 
     // Filter by current month
@@ -172,6 +177,8 @@ export default function DashboardPage() {
     let expAll = 0;
     let expPaid = 0;
     let expPending = 0;
+    let fixedTotal = 0;
+    let variableTotal = 0;
 
     // For 'extrato' real feel
     let currentlyReceivedIncome = 0;
@@ -189,6 +196,7 @@ export default function DashboardPage() {
         }
       } else if (t.type === "deduction") {
         autoDedAll += amt;
+        fixedTotal += amt; // Deductions are usually fixed
         if (t.status === "paid") {
           autoDedPaid += amt;
         } else {
@@ -197,6 +205,12 @@ export default function DashboardPage() {
         }
       } else if (t.type === "expense") {
         expAll += amt;
+        if (t.isFixed || t.isRecurring) {
+          fixedTotal += amt;
+        } else {
+          variableTotal += amt;
+        }
+        
         if (t.status === "paid") {
           expPaid += amt;
         } else {
@@ -665,14 +679,14 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 auto-rows-min">
         {/* Saldo Atual Pill */}
         <div
-          className={`${realBalance >= 0 ? "bg-emerald-50 border-emerald-100" : "bg-rose-50 border-rose-100"} border rounded-[2rem] px-6 py-6 flex flex-col justify-center relative overflow-hidden transition-colors`}
+          className={`col-span-1 md:col-span-2 ${realBalance >= 0 ? "bg-emerald-50 border-emerald-100 dark:bg-emerald-500/10 dark:border-emerald-500/20" : "bg-rose-50 border-rose-100 dark:bg-rose-500/10 dark:border-rose-500/20"} border rounded-[2rem] px-6 py-6 flex flex-col justify-center relative overflow-hidden transition-all duration-300 hover:scale-[1.01] hover:shadow-sm cursor-default`}
         >
           <div className="flex items-center gap-4 mb-4">
             <div
-              className={`w-12 h-12 rounded-full ${realBalance >= 0 ? "bg-emerald-500" : "bg-rose-500"} text-white flex items-center justify-center shrink-0 shadow-sm transition-colors z-10`}
+              className={`w-12 h-12 rounded-full ${realBalance >= 0 ? "bg-emerald-500 dark:bg-emerald-600" : "bg-rose-500 dark:bg-rose-600"} text-white flex items-center justify-center shrink-0 shadow-sm transition-colors z-10`}
             >
               {realBalance >= 0 ? (
                 <ArrowUpRight className="w-6 h-6" />
@@ -681,32 +695,32 @@ export default function DashboardPage() {
               )}
             </div>
             <div
-              className={`ml-auto ${realBalance >= 0 ? "text-emerald-700 bg-emerald-100" : "text-rose-700 bg-rose-100"} px-3 py-1 text-xs font-bold rounded-full uppercase tracking-widest z-10 transition-colors`}
+              className={`ml-auto ${realBalance >= 0 ? "text-emerald-700 bg-emerald-100 dark:bg-emerald-900/50 dark:text-emerald-300" : "text-rose-700 bg-rose-100 dark:bg-rose-900/50 dark:text-rose-300"} px-3 py-1 text-xs font-bold rounded-full uppercase tracking-widest z-10 transition-colors`}
             >
               Saldo
             </div>
           </div>
-          <p className="text-3xl lg:text-4xl font-bold tracking-tight text-slate-800 z-10">
+          <p className="text-3xl lg:text-4xl font-bold tracking-tight text-slate-800 dark:text-slate-50 z-10">
             {formatCurrency(realBalance)}
           </p>
-          <p className="text-xs text-slate-500 font-medium mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1 z-10">
             Estimativa livre fim do mês:{" "}
-            {formatCurrency(expectedEndMonthBalance)}
+            <span className="font-bold">{formatCurrency(expectedEndMonthBalance)}</span>
           </p>
         </div>
 
         {/* Entradas */}
-        <div className="bg-[#f8f5ff] border border-violet-100 rounded-[2rem] p-6 relative overflow-hidden group hover:shadow-md transition-shadow">
+        <div className="col-span-1 bg-[#f8f5ff] dark:bg-violet-900/20 border border-violet-100 dark:border-violet-800/30 rounded-[2rem] p-6 relative overflow-hidden group hover:shadow-md transition-all duration-300 hover:scale-[1.01] cursor-default">
           <div className="flex justify-between items-start mb-4">
             <div className="flex items-center gap-3">
-              <div className="bg-violet-100 p-3 rounded-2xl text-violet-600 shadow-sm">
+              <div className="bg-violet-100 dark:bg-violet-800/50 p-3 rounded-2xl text-violet-600 dark:text-violet-300 shadow-sm">
                 <TrendingUp className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-violet-600">
+                <p className="text-xs font-bold uppercase tracking-widest text-violet-600 dark:text-violet-400">
                   Entradas
                 </p>
-                <div className="flex items-center gap-1.5 text-violet-400 text-sm font-medium mt-0.5">
+                <div className="flex items-center gap-1.5 text-violet-400 dark:text-violet-500/80 text-sm font-medium mt-0.5">
                   {monthYearString} <Calendar className="w-3.5 h-3.5" />
                 </div>
               </div>
@@ -714,23 +728,23 @@ export default function DashboardPage() {
           </div>
 
           <div className="mt-2">
-            <p className="text-3xl lg:text-4xl font-bold tracking-tight text-violet-950">
+            <p className="text-2xl font-bold tracking-tight text-violet-950 dark:text-violet-100 truncate">
               {formatCurrency(grossIncome)}
             </p>
           </div>
         </div>
 
         {/* Gastos */}
-        <div className="bg-[#f0fdf4] border border-emerald-100 rounded-[2rem] p-6 relative overflow-hidden group hover:shadow-md transition-shadow flex flex-col justify-between">
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-1/2 bg-emerald-400 rounded-r-lg" />
+        <div className="col-span-1 bg-[#f0fdf4] dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/30 rounded-[2rem] p-6 relative overflow-hidden group hover:shadow-md transition-all duration-300 hover:scale-[1.01] flex flex-col justify-between cursor-default">
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-1/2 bg-emerald-400 dark:bg-emerald-500 rounded-r-lg opacity-80" />
           <div className="flex justify-between items-start pl-2 mb-4">
-            <div className="flex items-center gap-3 text-emerald-500">
+            <div className="flex items-center gap-3 text-emerald-500 dark:text-emerald-400">
               <ReceiptText className="w-7 h-7" />
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-emerald-600">
+                <p className="text-xs font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
                   Gastos
                 </p>
-                <div className="flex items-center gap-1.5 text-emerald-400 text-sm font-medium mt-0.5">
+                <div className="flex items-center gap-1.5 text-emerald-400 dark:text-emerald-500/80 text-sm font-medium mt-0.5">
                   Neste mês <Calendar className="w-3.5 h-3.5" />
                 </div>
               </div>
@@ -738,145 +752,134 @@ export default function DashboardPage() {
           </div>
 
           <div className="pl-2 mt-2">
-            <p className="text-3xl lg:text-4xl font-bold tracking-tight text-slate-900">
+            <p className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">
               {formatCurrency(totalExpense)}
             </p>
           </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Left/Middle Column (Insights) */}
-        <div className="space-y-6">
-          {/* Desafios & Insights */}
-          <div>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold text-slate-900">
-                IA Financeira
-              </h3>
-              <span className="text-emerald-600 text-sm font-semibold cursor-pointer hover:underline">
-                Ver Análise
-              </span>
-            </div>
-
-            <Card className="bg-white border border-slate-200 rounded-[1.5rem] shadow-sm overflow-hidden">
-              <CardContent className="p-0">
-                <div className="p-5 border-b border-slate-100 flex items-start gap-4">
-                  <div className="bg-emerald-50 p-3 rounded-2xl text-emerald-600 shrink-0">
-                    <Target className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-slate-800">Progresso do Mês</p>
-                    <p className="text-sm text-slate-500 mt-1 leading-relaxed">
-                      {aiInsights()}
-                    </p>
-                  </div>
-                </div>
-
-                {!notificationsEnabled && "Notification" in window && (
-                  <div className="p-5 bg-blue-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-t border-blue-100">
-                    <div className="flex items-start sm:items-center gap-4">
-                      <div className="bg-white p-2.5 rounded-xl text-blue-500 shadow-sm shrink-0">
-                        <Bell className="w-5 h-5" />
-                      </div>
-                      <p className="text-sm text-blue-800 font-medium leading-relaxed">
-                        Deseja receber lembretes sobre contas pendentes na barra
-                        de notificação do seu celular?
-                      </p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      onClick={requestNotifications}
-                      className="bg-white text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700 shrink-0 whitespace-nowrap w-full sm:w-auto"
-                    >
-                      Ativar Notificações
-                    </Button>
-                  </div>
-                )}
-
-                {predictiveAlerts.length > 0 &&
-                  predictiveAlerts.slice(0, 1).map((alert, idx) => (
-                    <div
-                      key={idx}
-                      className="p-5 bg-orange-50 flex items-start gap-4 relative overflow-hidden"
-                    >
-                      <div className="absolute top-0 right-0 p-4 opacity-10">
-                        <AlertCircle className="w-20 h-20 text-orange-900" />
-                      </div>
-                      <div className="bg-white p-2.5 rounded-xl text-orange-500 shadow-sm shrink-0 z-10">
-                        <AlertCircle className="w-5 h-5" />
-                      </div>
-                      <div className="z-10 relative">
-                        <p className="font-bold text-orange-900">
-                          Alerta de Gastos
-                        </p>
-                        <p className="text-sm text-orange-800 mt-1 leading-relaxed">
-                          {alert}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Dívidas Consolidadas */}
-          <div>
-            <div className="flex justify-between items-center mb-4 mt-6">
-              <h3 className="text-lg font-bold text-slate-900">
-                Endividamento
-              </h3>
-              <span
-                className="text-emerald-600 text-sm font-semibold cursor-pointer hover:underline"
-                onClick={() => navigate("/app/dividas")}
-              >
-                Ver Detalhes
-              </span>
-            </div>
-            <Card
-              className="bg-white border border-slate-200 rounded-[1.5rem] shadow-sm cursor-pointer hover:shadow-md transition-shadow overflow-hidden"
-              onClick={() => navigate("/app/dividas")}
-            >
-              <CardContent className="p-5 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="bg-rose-50 p-3 rounded-2xl text-rose-600 shrink-0">
-                    <ShieldAlert className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-slate-800">
-                      Saldo Devedor Total
-                    </p>
-                    <p className="text-sm text-slate-500">
-                      {debts?.length || 0} contas sob gestão
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-xl font-bold tracking-tight text-rose-600">
-                    {formatCurrency(totalDebts)}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+        {/* Waterfall Chart */}
+        <div className="col-span-1 md:col-span-2 lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] p-6 shadow-sm overflow-hidden flex flex-col">
+          <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+            Fluxo de Caixa
+          </h3>
+          <div className="flex-1 min-h-[250px]">
+            <WaterfallChart 
+              income={grossIncome} 
+              fixedExpenses={fixedTotal} 
+              variableExpenses={variableTotal} 
+              remaining={realBalance} 
+            />
           </div>
         </div>
 
-        {/* Right Column (Transactions) */}
-        <div className="space-y-6">
-          <GamificationWidget />
+        {/* IA Financeira */}
+        <div className="col-span-1 md:col-span-2 lg:col-span-2 space-y-6">
+          <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[1.5rem] shadow-sm overflow-hidden h-full flex flex-col">
+            <CardContent className="p-0 flex-1 flex flex-col">
+              <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-start gap-4 flex-1">
+                <div className="bg-emerald-50 dark:bg-emerald-500/10 p-3 rounded-2xl text-emerald-600 dark:text-emerald-400 shrink-0">
+                  <Target className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="font-bold text-slate-800 dark:text-slate-100">IA Financeira: Progresso do Mês</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                    {aiInsights()}
+                  </p>
+                </div>
+              </div>
 
-          {/* Transações Recentes Simplificado */}
-          <div>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Transações</h3>
-            </div>
-            <div className="space-y-3">
-              <TransactionStack
-                transactions={monthTransactions}
-                onMarkAsPaid={handleMarkAsPaid}
-              />
-            </div>
+              {!notificationsEnabled && "Notification" in window && (
+                <div className="p-5 bg-blue-50 dark:bg-blue-900/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-t border-blue-100 dark:border-blue-900/30">
+                  <div className="flex items-start sm:items-center gap-4">
+                    <div className="bg-white dark:bg-slate-800 p-2.5 rounded-xl text-blue-500 dark:text-blue-400 shadow-sm shrink-0">
+                      <Bell className="w-5 h-5" />
+                    </div>
+                    <p className="text-sm text-blue-800 dark:text-blue-200 font-medium leading-relaxed">
+                      Lembretes para contas?
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={requestNotifications}
+                    className="bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 shrink-0 whitespace-nowrap w-full sm:w-auto"
+                  >
+                    Ativar
+                  </Button>
+                </div>
+              )}
+
+              {predictiveAlerts.length > 0 &&
+                predictiveAlerts.slice(0, 1).map((alert, idx) => (
+                  <div
+                    key={idx}
+                    className="p-5 bg-orange-50 dark:bg-orange-900/10 flex items-start gap-4 relative overflow-hidden flex-1"
+                  >
+                    <div className="absolute top-0 right-0 p-4 opacity-10">
+                      <AlertCircle className="w-20 h-20 text-orange-900 dark:text-orange-500" />
+                    </div>
+                    <div className="bg-white dark:bg-slate-800 p-2.5 rounded-xl text-orange-500 shadow-sm shrink-0 z-10">
+                      <AlertCircle className="w-5 h-5" />
+                    </div>
+                    <div className="z-10 relative">
+                      <p className="font-bold text-orange-900 dark:text-orange-400">
+                        Alerta de Gastos
+                      </p>
+                      <p className="text-sm text-orange-800 dark:text-orange-200 mt-1 leading-relaxed">
+                        {alert}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Transações (Row span 2) */}
+        <div className="col-span-1 md:col-span-2 lg:col-span-2 lg:row-span-2">
+          <div className="flex justify-between items-center mb-4 px-2">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+              Transações
+            </h3>
           </div>
+          <TransactionStack
+            transactions={monthTransactions}
+            onMarkAsPaid={handleMarkAsPaid}
+          />
+        </div>
+
+        {/* Gamification */}
+        <div className="col-span-1 md:col-span-2 lg:col-span-2">
+          <GamificationWidget />
+        </div>
+
+        {/* Dívidas Consolidadas */}
+        <div className="col-span-1 md:col-span-2 lg:col-span-2">
+          <Card
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[1.5rem] shadow-sm cursor-pointer hover:shadow-md transition-shadow overflow-hidden"
+            onClick={() => navigate("/app/dividas")}
+          >
+            <CardContent className="p-5 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="bg-rose-50 dark:bg-rose-500/10 p-3 rounded-2xl text-rose-600 dark:text-rose-400 shrink-0">
+                  <ShieldAlert className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="font-bold text-slate-800 dark:text-slate-100">
+                    Endividamento Total
+                  </p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    {debts?.length || 0} contas sob gestão
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-xl font-bold tracking-tight text-rose-600 dark:text-rose-400">
+                  {formatCurrency(totalDebts)}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

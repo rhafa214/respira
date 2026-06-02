@@ -52,7 +52,7 @@ type Transaction = {
     | "Renda"
     | "Outros";
   date: string;
-  type: "income" | "expense";
+  type: "income" | "expense" | "deduction";
   isFixed?: boolean;
   isRecurring?: boolean;
   installmentInfo?: string;
@@ -332,6 +332,13 @@ export default function ExpensesPage() {
         <h1 className="text-3xl font-bold tracking-tight text-slate-900">
           Lançamentos
         </h1>
+        <Button
+          onClick={() => setOpenDialog(true)}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full font-bold shadow-sm"
+        >
+          <Plus className="w-4 h-4 mr-1.5" />
+          Novo
+        </Button>
       </div>
 
       {/* Tabs */}
@@ -541,13 +548,6 @@ export default function ExpensesPage() {
 
       {/* Add Dialog */}
       <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-        <DialogTrigger asChild>
-          <div className="fixed bottom-24 md:bottom-12 right-4 md:right-8 z-50">
-            <button className="w-14 h-14 bg-slate-900 text-white rounded-2xl shadow-lg shadow-slate-900/20 flex items-center justify-center hover:scale-105 active:scale-95 transition-all">
-              <Plus className="w-6 h-6" />
-            </button>
-          </div>
-        </DialogTrigger>
         <DialogContent className="rounded-3xl">
           <DialogHeader>
             <DialogTitle>

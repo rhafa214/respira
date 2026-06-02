@@ -196,6 +196,16 @@ export function TransactionStack({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
+                        if (navigator.vibrate) navigator.vibrate(50);
+                        try {
+                          const confetti = require("canvas-confetti");
+                          confetti({
+                            particleCount: 100,
+                            spread: 70,
+                            origin: { y: 0.6 },
+                            colors: ['#10b981', '#34d399', '#fef08a'] // Emerald and some gold
+                          });
+                        } catch (e) {}
                         onMarkAsPaid(tx.id);
                       }}
                       className="mt-1 text-[10px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400 px-2 py-1 rounded-full hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors"
