@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Clock, Landmark, Calendar, Trash2 } from "lucide-react";
+import { Plus, Clock, Landmark, Calendar, Trash2, HandCoins } from "lucide-react";
 import { useCollection } from "@/hooks/useFirestore";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -141,7 +141,7 @@ export default function LoansPage() {
                className="p-12 text-center flex flex-col items-center justify-center text-slate-500 bg-white rounded-3xl border border-slate-100"
              >
                <div className="w-16 h-16 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center mb-4">
-                 <Landmark className="w-8 h-8"/>
+                 <HandCoins className="w-8 h-8"/>
                </div>
                <p className="text-lg font-bold text-slate-800">Nenhum empréstimo cadastrado</p>
                <p className="max-w-xs mt-1 text-sm">Cadastre seus empréstimos para visualizar o quanto do seu salário está comprometido.</p>
@@ -153,7 +153,7 @@ export default function LoansPage() {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center p-5 gap-6">
                   <div className="flex items-center gap-4 w-full sm:w-1/3">
                     <div className={`w-12 h-12 rounded-2xl shrink-0 flex items-center justify-center text-white bg-slate-900`}>
-                       <Landmark className="w-6 h-6" />
+                       <HandCoins className="w-6 h-6" />
                     </div>
                     <div>
                       <h4 className="font-semibold text-slate-900 leading-tight">{loan.bank}</h4>

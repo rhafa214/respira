@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { LayoutDashboard, WalletCards, TrendingDown, Target, User, LifeBuoy, Bell, Sparkles, LogOut, ArrowLeftRight, Repeat, Moon, Sun, Landmark, Leaf, Menu, X, ShoppingBag, ShoppingCart, PiggyBank, Search } from "lucide-react";
+import { LayoutDashboard, WalletCards, TrendingDown, Target, User, LifeBuoy, Bell, Sparkles, LogOut, ArrowLeftRight, Repeat, Moon, Sun, Landmark, Leaf, Menu, X, ShoppingBag, ShoppingCart, PiggyBank, Search, HandCoins } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/AuthProvider";
 import { GlobalChatFAB } from "@/components/GlobalChatFAB";
@@ -15,7 +15,7 @@ const navItems = [
   { icon: Target, label: "Orçamentos", path: "/app/orcamento" },
   { icon: Landmark, label: "Bancos e Cartões", path: "/app/bancos" },
   { icon: PiggyBank, label: "Dívidas", path: "/app/dividas" },
-  { icon: Landmark, label: "Empréstimos", path: "/app/emprestimos" },
+  { icon: HandCoins, label: "Empréstimos", path: "/app/emprestimos" },
   { icon: Target, label: "Sonhos e Metas", path: "/app/metas" },
   { icon: ShoppingBag, label: "Desejos", path: "/app/desejos" },
   { icon: Sparkles, label: "IA Financeira", path: "/app/consultor" },

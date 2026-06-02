@@ -27,6 +27,8 @@ export default function DashboardPage() {
   const { data: allTransactions, update: updateTx, add: addTx, loading: txLoading, error: txError } = useCollection<any>('transactions');
   const { data: debts, loading: dbLoading, error: dbError } = useCollection<any>('debts');
   
+  const totalDebts = debts ? debts.reduce((acc, d) => acc + Number(d.remaining || 0), 0) : 0;
+
   // Use actual current date so the selected month is synced out of the box
   const { currentDate, setCurrentDate } = useMonth();
 
@@ -497,6 +499,30 @@ export default function DashboardPage() {
                       </div>
                    </div>
                  ))}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Dívidas Consolidadas */}
+          <div>
+            <div className="flex justify-between items-center mb-4 mt-6">
+               <h3 className="text-lg font-bold text-slate-900">Endividamento</h3>
+               <span className="text-emerald-600 text-sm font-semibold cursor-pointer hover:underline" onClick={() => navigate('/app/dividas')}>Ver Detalhes</span>
+            </div>
+            <Card className="bg-white border border-slate-200 rounded-[1.5rem] shadow-sm cursor-pointer hover:shadow-md transition-shadow overflow-hidden" onClick={() => navigate('/app/dividas')}>
+              <CardContent className="p-5 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                   <div className="bg-rose-50 p-3 rounded-2xl text-rose-600 shrink-0">
+                      <ShieldAlert className="w-6 h-6" />
+                   </div>
+                   <div>
+                      <p className="font-bold text-slate-800">Saldo Devedor Total</p>
+                      <p className="text-sm text-slate-500">{debts?.length || 0} contas sob gestão</p>
+                   </div>
+                </div>
+                <div className="text-right">
+                   <p className="text-xl font-bold tracking-tight text-rose-600">{formatCurrency(totalDebts)}</p>
+                </div>
               </CardContent>
             </Card>
           </div>
