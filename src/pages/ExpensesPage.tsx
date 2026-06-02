@@ -4,7 +4,7 @@ import { ptBR } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Filter, ShoppingCart, Home, Car, Pill, GraduationCap, ArrowDownRight, ArrowUpRight, TrendingUp, Calendar, ChevronLeft, ChevronRight, ReceiptText, Pencil, CalendarDays, CheckCircle2 } from "lucide-react";
+import { Plus, Search, Filter, ShoppingCart, Home, Car, Pill, GraduationCap, ArrowDownRight, ArrowUpRight, TrendingUp, Calendar, ChevronLeft, ChevronRight, ReceiptText, Pencil, CalendarDays, CheckCircle2, Trash2 } from "lucide-react";
 import { useCollection } from "@/hooks/useFirestore";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -26,24 +26,28 @@ type Transaction = {
 
 export default function ExpensesPage() {
   const { currentDate, setCurrentDate } = useMonth();
-  const { data: allTransactions, add, update, loading } = useCollection<Transaction>('transactions');
+  const { data: allTransactions, add, update, remove, loading } = useCollection<Transaction>('transactions');
   
-  const [activeTab, setActiveTab] = useState<"fixed" | "variable">("variable");
+  const [activeTab, setActiveTab] = useState<"fixed" | "variable" | "income">("variable");
 
   const monthStr = format(currentDate, "yyyy-MM");
   const monthName = format(currentDate, "MMMM yyyy", { locale: ptBR });
 
   // Filter by selected month from context
   const transactionsThisMonth = allTransactions
-    .filter(t => t.date && t.type === 'expense' && t.date.substring(0, 7) === monthStr)
+    .filter(t => t.date && t.date.substring(0, 7) === monthStr)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  const variableExpenses = transactionsThisMonth.filter(t => !t.isFixed && !t.isRecurring && !t.installmentInfo);
-  const fixedExpenses = transactionsThisMonth.filter(t => t.isFixed || t.isRecurring || !!t.installmentInfo);
+  const incomes = transactionsThisMonth.filter(t => t.type === 'income');
+  const expenses = transactionsThisMonth.filter(t => t.type === 'expense');
 
-  const displayedTransactions = activeTab === 'variable' ? variableExpenses : fixedExpenses;
+  const variableExpenses = expenses.filter(t => !t.isFixed && !t.isRecurring && !t.installmentInfo);
+  const fixedExpenses = expenses.filter(t => t.isFixed || t.isRecurring || !!t.installmentInfo);
+
+  const displayedTransactions = activeTab === 'variable' ? variableExpenses : activeTab === 'fixed' ? fixedExpenses : incomes;
   const totalVariable = variableExpenses.reduce((acc, t) => acc + Number(t.amount || 0), 0);
   const totalFixed = fixedExpenses.reduce((acc, t) => acc + Number(t.amount || 0), 0);
+  const totalIncome = incomes.reduce((acc, t) => acc + Number(t.amount || 0), 0);
 
   const [openDialog, setOpenDialog] = useState(false);
   const [newTx, setNewTx] = useState<Partial<Transaction>>({ type: 'expense', category: 'Alimentação', status: 'paid' });
@@ -68,10 +72,10 @@ export default function ExpensesPage() {
   const handleAdd = async () => {
     if (!newTx.description || !newTx.amount || !newTx.date) return;
     setAdding(true);
-    await add({...newTx, isFixed: activeTab === 'fixed'} as Omit<Transaction, 'id' | 'userId' | 'createdAt'>);
+    await add({...newTx, type: activeTab === 'income' ? 'income' : 'expense', isFixed: activeTab === 'fixed'} as Omit<Transaction, 'id' | 'userId' | 'createdAt'>);
     setAdding(false);
     setOpenDialog(false);
-    setNewTx({ type: 'expense', category: 'Alimentação', status: 'paid' });
+    setNewTx({ type: activeTab === 'income' ? 'income' : 'expense', category: activeTab === 'income' ? 'Renda' : 'Alimentação', status: 'paid' });
   };
 
   const handleEdit = async () => {
@@ -79,6 +83,15 @@ export default function ExpensesPage() {
     setSaving(true);
     const { id, ...data } = editTx;
     await update(id, data);
+    setSaving(false);
+    setEditDialog(false);
+    setEditTx(null);
+  };
+
+  const handleDelete = async () => {
+    if (!editTx || !editTx.id) return;
+    setSaving(true);
+    await remove(editTx.id);
     setSaving(false);
     setEditDialog(false);
     setEditTx(null);
@@ -92,19 +105,25 @@ export default function ExpensesPage() {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-12 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-24">
       
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Gastos</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Lançamentos</h1>
       </div>
 
       {/* Tabs */}
       <div className="bg-slate-100 p-1.5 rounded-full flex items-center">
          <button 
-           onClick={() => setActiveTab('fixed')}
+           onClick={() => { setActiveTab('income'); setNewTx({...newTx, type: 'income', category: 'Renda'}); }}
+           className={`flex-1 py-2.5 px-4 text-sm font-semibold rounded-full transition-all flex items-center justify-center gap-2 ${activeTab === 'income' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+         >
+           Entradas
+         </button>
+         <button 
+           onClick={() => { setActiveTab('fixed'); setNewTx({...newTx, type: 'expense'}); }}
            className={`flex-1 py-2.5 px-4 text-sm font-semibold rounded-full transition-all flex items-center justify-center gap-2 ${activeTab === 'fixed' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
          >
            Fixos
          </button>
          <button 
-           onClick={() => setActiveTab('variable')}
+           onClick={() => { setActiveTab('variable'); setNewTx({...newTx, type: 'expense'}); }}
            className={`flex-1 py-2.5 px-4 text-sm font-semibold rounded-full transition-all flex items-center justify-center gap-2 ${activeTab === 'variable' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
          >
            Variáveis
@@ -131,6 +150,20 @@ export default function ExpensesPage() {
          </div>
       )}
 
+      {activeTab === 'income' && (
+         <div className="bg-emerald-50 border border-emerald-100/50 p-4 rounded-3xl relative overflow-hidden flex items-start gap-3">
+            <div className="bg-emerald-500 p-2.5 rounded-xl text-white shrink-0 flex items-center justify-center">
+               <ArrowUpRight className="w-5 h-5 stroke-[2]" />
+            </div>
+            <div>
+               <h3 className="font-bold text-slate-800">Entradas e Receitas</h3>
+               <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
+                 Seus salários, rendimentos e rendas extras deste mês.
+               </p>
+            </div>
+         </div>
+      )}
+
       {/* Month Selector */}
       <div className="flex items-center justify-between px-2">
          <button onClick={handlePrevMonth} className="p-2 text-slate-400 hover:text-slate-800 transition-colors">
@@ -142,12 +175,12 @@ export default function ExpensesPage() {
          </button>
       </div>
 
-      <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-[32px] p-8 shadow-xl shadow-slate-900/10 relative overflow-hidden">
+      <div className={`rounded-[32px] p-8 shadow-xl relative overflow-hidden text-white ${activeTab === 'income' ? 'bg-gradient-to-br from-emerald-600 to-emerald-500 shadow-emerald-500/20' : 'bg-gradient-to-br from-slate-900 to-slate-800 shadow-slate-900/10'}`}>
          <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
            <TrendingUp className="w-24 h-24 stroke-[1]" />
          </div>
-         <p className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-1 relative z-10">Total de Gastos {activeTab === 'variable' ? 'Variáveis' : 'Fixos'}</p>
-         <p className="text-4xl text-white tracking-tight relative z-10">{formatCurrency(activeTab === 'variable' ? totalVariable : totalFixed)}</p>
+         <p className="text-white/70 text-xs font-semibold uppercase tracking-widest mb-1 relative z-10">Total de {activeTab === 'variable' ? 'Gastos Variáveis' : activeTab === 'fixed' ? 'Gastos Fixos' : 'Entradas'}</p>
+         <p className="text-4xl text-white tracking-tight relative z-10">{formatCurrency(activeTab === 'variable' ? totalVariable : activeTab === 'fixed' ? totalFixed : totalIncome)}</p>
       </div>
 
       <div className="space-y-4 pt-4">
@@ -158,8 +191,8 @@ export default function ExpensesPage() {
                      <ReceiptText className="w-10 h-10 stroke-[1]" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-slate-600">Nenhum gasto {activeTab === 'variable' ? 'variável' : 'fixo'} ainda</p>
-                    <p className="text-xs text-slate-400 mt-1">Clique no + para adicionar seu primeiro gasto.</p>
+                    <p className="text-sm font-medium text-slate-600">Nenhum registro encontrado</p>
+                    <p className="text-xs text-slate-400 mt-1">Clique no + para adicionar seu primeiro registro aqui.</p>
                   </div>
                </div>
             ) : (
@@ -173,8 +206,8 @@ export default function ExpensesPage() {
                     className="group bg-white p-4 rounded-[24px] border border-slate-100/60 shadow-sm hover:shadow-md transition-all cursor-pointer flex items-center justify-between"
                   >
                      <div className="flex items-center gap-4">
-                       <div className={`p-3 rounded-2xl shrink-0 transition-colors ${getCategoryColor(tx.category || tx.description, tx.type)}`}>
-                         {getCategoryIcon(tx.category || tx.description, tx.type, "w-6 h-6 stroke-[1.5]")}
+                       <div className={`p-3 rounded-2xl shrink-0 transition-colors ${tx.type === 'income' ? 'bg-emerald-100 text-emerald-600' : getCategoryColor(tx.category || tx.description, tx.type)}`}>
+                         {tx.type === 'income' ? <ArrowUpRight className="w-6 h-6 stroke-[1.5]" /> : getCategoryIcon(tx.category || tx.description, tx.type, "w-6 h-6 stroke-[1.5]")}
                        </div>
                        <div className="flex flex-col justify-center gap-0.5">
                           <div className="flex items-center gap-2">
@@ -205,8 +238,8 @@ export default function ExpensesPage() {
                      </div>
                      <div className="flex items-center gap-3">
                        <div className="text-right">
-                          <p className="font-semibold text-[15px] tracking-tight text-slate-900">
-                             - {formatCurrency(Number(tx.amount))}
+                          <p className={`font-semibold text-[15px] tracking-tight ${tx.type === 'income' ? 'text-emerald-600' : 'text-slate-900'}`}>
+                             {tx.type === 'income' ? '+' : '-'} {formatCurrency(Number(tx.amount))}
                           </p>
                        </div>
                        <Pencil className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors" />
@@ -269,26 +302,36 @@ export default function ExpensesPage() {
                 value={newTx.category} 
                 onChange={e => setNewTx({...newTx, category: e.target.value as any})}
               >
-                <option value="Alimentação">Alimentação</option>
-                <option value="Moradia">Moradia</option>
-                <option value="Transporte">Transporte</option>
-                <option value="Saúde">Saúde</option>
-                <option value="Educação">Educação</option>
-                <option value="Lazer">Lazer</option>
-                <option value="Vestuário">Vestuário</option>
-                <option value="Beleza">Beleza</option>
-                <option value="Contas Base">Contas Base</option>
-                <option value="Cartões e Taxas">Cartões e Taxas</option>
-                <option value="Assinaturas">Assinaturas</option>
-                <option value="Serviços">Serviços</option>
-                <option value="Presentes/Doações">Presentes/Doações</option>
-                <option value="Outros">Outros</option>
+                {activeTab === 'income' ? (
+                  <>
+                     <option value="Salário">Salário / Renda Principal</option>
+                     <option value="Renda Extra">Renda Extra</option>
+                     <option value="Outros">Outros</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="Alimentação">Alimentação</option>
+                    <option value="Moradia">Moradia</option>
+                    <option value="Transporte">Transporte</option>
+                    <option value="Saúde">Saúde</option>
+                    <option value="Educação">Educação</option>
+                    <option value="Lazer">Lazer</option>
+                    <option value="Vestuário">Vestuário</option>
+                    <option value="Beleza">Beleza</option>
+                    <option value="Contas Base">Contas Base</option>
+                    <option value="Cartões e Taxas">Cartões e Taxas</option>
+                    <option value="Assinaturas">Assinaturas</option>
+                    <option value="Serviços">Serviços</option>
+                    <option value="Presentes/Doações">Presentes/Doações</option>
+                    <option value="Outros">Outros</option>
+                  </>
+                )}
               </select>
             </div>
           </div>
           <DialogFooter>
             <Button onClick={handleAdd} disabled={adding || !newTx.description || !newTx.amount || !newTx.date} className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-xl h-11 text-base">
-              {adding ? 'Salvando...' : 'Adicionar Gasto'}
+              {adding ? 'Salvando...' : 'Adicionar Registro'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -298,7 +341,7 @@ export default function ExpensesPage() {
       <Dialog open={editDialog} onOpenChange={setEditDialog}>
         <DialogContent className="rounded-3xl">
           <DialogHeader>
-            <DialogTitle>Editar Gasto</DialogTitle>
+            <DialogTitle>Editar Registro</DialogTitle>
           </DialogHeader>
           {editTx && (
             <div className="space-y-4 py-4">
@@ -328,7 +371,7 @@ export default function ExpensesPage() {
                      value={editTx.status || 'paid'} 
                      onChange={e => setEditTx({...editTx, status: e.target.value as 'paid'|'pending'})}
                    >
-                     <option value="paid">Pago</option>
+                     <option value="paid">{editTx.type === 'income' ? 'Recebido' : 'Pago'}</option>
                      <option value="pending">Pendente</option>
                    </select>
                 </div>
@@ -340,30 +383,43 @@ export default function ExpensesPage() {
                   value={editTx.category} 
                   onChange={e => setEditTx({...editTx, category: e.target.value as any})}
                 >
-                  <option value="Alimentação">Alimentação</option>
-                  <option value="Moradia">Moradia</option>
-                  <option value="Transporte">Transporte</option>
-                  <option value="Saúde">Saúde</option>
-                  <option value="Educação">Educação</option>
-                  <option value="Lazer">Lazer</option>
-                  <option value="Vestuário">Vestuário</option>
-                  <option value="Beleza">Beleza</option>
-                  <option value="Contas Base">Contas Base</option>
-                  <option value="Cartões e Taxas">Cartões e Taxas</option>
-                  <option value="Assinaturas">Assinaturas</option>
-                  <option value="Serviços">Serviços</option>
-                  <option value="Presentes/Doações">Presentes/Doações</option>
-                  <option value="Outros">Outros</option>
+                  {editTx.type === 'income' ? (
+                  <>
+                     <option value="Salário">Salário / Renda Principal</option>
+                     <option value="Renda Extra">Renda Extra</option>
+                     <option value="Outros">Outros</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="Alimentação">Alimentação</option>
+                    <option value="Moradia">Moradia</option>
+                    <option value="Transporte">Transporte</option>
+                    <option value="Saúde">Saúde</option>
+                    <option value="Educação">Educação</option>
+                    <option value="Lazer">Lazer</option>
+                    <option value="Vestuário">Vestuário</option>
+                    <option value="Beleza">Beleza</option>
+                    <option value="Contas Base">Contas Base</option>
+                    <option value="Cartões e Taxas">Cartões e Taxas</option>
+                    <option value="Assinaturas">Assinaturas</option>
+                    <option value="Serviços">Serviços</option>
+                    <option value="Presentes/Doações">Presentes/Doações</option>
+                    <option value="Outros">Outros</option>
+                  </>
+                )}
                 </select>
               </div>
             </div>
           )}
           <DialogFooter>
              <div className="flex gap-3 w-full">
-               <Button variant="outline" onClick={() => setEditDialog(false)} className="w-full rounded-xl h-11 text-slate-600">
+               <Button variant="outline" onClick={handleDelete} className="w-14 rounded-xl h-11 border-rose-200 text-rose-500 hover:bg-rose-50 hover:text-rose-600">
+                 <Trash2 className="w-4 h-4" />
+               </Button>
+               <Button variant="outline" onClick={() => setEditDialog(false)} className="flex-1 rounded-xl h-11 text-slate-600">
                  Cancelar
                </Button>
-               <Button onClick={handleEdit} disabled={saving || !editTx?.description || !editTx?.amount || !editTx?.date} className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-xl h-11">
+               <Button onClick={handleEdit} disabled={saving || !editTx?.description || !editTx?.amount || !editTx?.date} className="flex-1 bg-slate-900 hover:bg-slate-800 text-white rounded-xl h-11">
                  {saving ? 'Salvando...' : 'Salvar'}
                </Button>
              </div>
