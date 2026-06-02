@@ -19,6 +19,8 @@ type Transaction = {
   date: string;
   type: "income" | "expense";
   isFixed?: boolean;
+  isRecurring?: boolean;
+  installmentInfo?: string;
 };
 
 export default function ExpensesPage() {
