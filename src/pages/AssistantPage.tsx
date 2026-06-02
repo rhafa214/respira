@@ -136,7 +136,7 @@ export default function AssistantPage() {
       }
 
       const aiResponse = await ai.models.generateContent({
-        model: "gemini-3.1-pro-preview",
+        model: "gemini-2.5-flash",
         contents: contents,
         config: {
           systemInstruction: "Você é o 'Consultor IA', especialista financeiro. Você pode responder perguntas e ajudar o usuário a registrar ou atualizar transações com as funções fornecidas. Se ele pedir para atualizar ou editar algo, localize o ID na lista e use updateTransaction. Não mencione o ID textualmente na resposta, apenas diga que alterou de forma amigável e qual foi a alteração.",

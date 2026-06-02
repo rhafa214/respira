@@ -78,7 +78,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       }
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.1-pro-preview",
+        model: "gemini-2.5-flash",
         contents: contents,
         config: {
           systemInstruction: "Aja como Copiloto Financeiro, estratégico, realista e emocionalmente engajado. \n" +
@@ -155,7 +155,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         // Second pass to let model summarize changes
         const summaryContext = `${promptContext}\nFunções executadas e resultados: ${JSON.stringify(toolResults)}\nCom base nisso, responda ao usuário sobre o que foi feito.`;
         const finalResponse = await ai.models.generateContent({
-            model: "gemini-3.1-pro-preview",
+            model: "gemini-2.5-flash",
             contents: summaryContext,
         });
 
