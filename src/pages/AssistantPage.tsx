@@ -79,7 +79,16 @@ export default function AssistantPage() {
       contextStr += `Dívidas ativas:\n${debts.map(d => `- ${d.bank}: Restam R$ ${d.remaining} de R$ ${d.total} (Status: ${d.status})`).join('\n')}\n`;
       contextStr += `Metas:\n${goals.map(g => `- ${g.title}: R$ ${g.current} de R$ ${g.target}`).join('\n')}\n`;
 
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const apiKey = process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
+      if (!apiKey) {
+        setMessages(prev => [...prev, { 
+          role: "model", 
+          text: "Erro: A chave da API do Gemini não foi encontrada! Acesse as Environment Variables do seu projeto, adicione a chave (GEMINI_API_KEY) e faça um novo deploy (Redeploy)." 
+        }]);
+        setLoading(false);
+        return;
+      }
+      const ai = new GoogleGenAI({ apiKey });
       const promptContext = `${contextStr}\nPergunta do usuário: "${userMessage || 'Por favor, escute o áudio anexo e siga com a solicitação.'}"`;
 
       const addTransactionDeclaration: FunctionDeclaration = {

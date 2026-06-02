@@ -54,7 +54,17 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       contextStr += `Dívidas ativas:\n${JSON.stringify(debts)}\n`;
       contextStr += `Lista de Desejos (itens que o usuário quer comprar):\n${JSON.stringify(wishlist)}\n`;
 
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const apiKey = process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
+      if (!apiKey) {
+        setMessages(prev => [...prev, { 
+          role: "model", 
+          text: "Erro: A chave da API do Gemini não foi encontrada! Se você está na Vercel, adicione `GEMINI_API_KEY` em Project Settings > Environment Variables, desmarque as opções desnecessárias se quiser, e **faça um novo deploy (Redeploy)**." 
+        }]);
+        setLoading(false);
+        return;
+      }
+      
+      const ai = new GoogleGenAI({ apiKey });
       const promptContext = `${contextStr}\nPergunta do usuário: "${userMessage || 'Por favor, escute o áudio anexo e siga com a solicitação.'}"`;
       
       const contents: any[] = [promptContext];
