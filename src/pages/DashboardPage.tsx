@@ -272,12 +272,16 @@ export default function DashboardPage() {
       </div>
 
       {/* Saldo Atual Pill */}
-      <div className="bg-emerald-50 border border-emerald-100 rounded-full px-6 py-4 flex items-center gap-4">
-         <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm">
-           <ArrowUpRight className="w-5 h-5" />
+      <div className={`${realBalance >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-rose-50 border-rose-100'} border rounded-full px-6 py-4 flex items-center gap-4 transition-colors`}>
+         <div className={`w-8 h-8 rounded-full ${realBalance >= 0 ? 'bg-emerald-500' : 'bg-rose-500'} text-white flex items-center justify-center shrink-0 shadow-sm transition-colors`}>
+           {realBalance >= 0 ? (
+             <ArrowUpRight className="w-5 h-5" />
+           ) : (
+             <ArrowDownRight className="w-5 h-5" />
+           )}
          </div>
          <span className="text-3xl font-bold tracking-tight text-slate-800">{formatCurrency(realBalance)}</span>
-         <div className="ml-auto text-emerald-700 bg-emerald-100 px-3 py-1 text-xs font-bold rounded-full uppercase tracking-widest hidden sm:block">
+         <div className={`ml-auto ${realBalance >= 0 ? 'text-emerald-700 bg-emerald-100' : 'text-rose-700 bg-rose-100'} px-3 py-1 text-xs font-bold rounded-full uppercase tracking-widest hidden sm:block transition-colors`}>
             Saldo
          </div>
       </div>
