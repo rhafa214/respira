@@ -171,5 +171,13 @@ service cloud.firestore {
       allow update: if isValidId(wishlistId) && isOwner(existing().userId) && incoming().userId == existing().userId;
       allow delete: if isValidId(wishlistId) && isOwner(existing().userId);
     }
+    
+    match /{collection}/{itemId} {
+      allow read, write: if collection.matches('^market_items_.*$') && isVerifiedUser();
+    }
+
+    match /market_budgets/{budgetId} {
+      allow read, write: if isVerifiedUser();
+    }
   }
 }

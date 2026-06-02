@@ -1,7 +1,44 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot, DocumentData, getDocs, addDoc, updateDoc, deleteDoc, doc, Timestamp, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, DocumentData, getDocs, addDoc, updateDoc, deleteDoc, doc, Timestamp, setDoc, orderBy } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '@/lib/firebase';
 import { useAuth } from '@/components/AuthProvider';
+
+export function useDoc<T>(collectionName: string, id: string) {
+  const { user } = useAuth();
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user || !id) return;
+    const docRef = doc(db, collectionName, id);
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setData({ id: docSnap.id, ...docSnap.data() } as unknown as T);
+      } else {
+        setData(null);
+      }
+      setLoading(false);
+      setError(null);
+    }, (err) => {
+       setError(err.message);
+       setLoading(false);
+    });
+    return () => unsubscribe();
+  }, [collectionName, id, user]);
+
+  const update = async (updates: Partial<T>) => {
+    if (!user) return;
+    try {
+       const docRef = doc(db, collectionName, id);
+       await setDoc(docRef, { ...updates, userId: user.uid }, { merge: true });
+    } catch (err) {
+       handleFirestoreError(err, OperationType.UPDATE, `${collectionName}/${id}`);
+    }
+  };
+  
+  return { data, loading, error, update };
+}
 
 export function useCollection<T>(collectionName: string) {
   const { user } = useAuth();

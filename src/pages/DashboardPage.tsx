@@ -1,9 +1,14 @@
 import { useState, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, isSameMonth, parseISO, isPast } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowUpRight, ArrowDownRight, CreditCard, Sparkles, ChevronLeft, ChevronRight, CheckCircle2, Clock, AlertCircle, ShieldAlert, Target, Calendar, TrendingUp, Info, Activity, ReceiptText } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { ArrowUpRight, ArrowDownRight, CreditCard, Sparkles, ChevronLeft, ChevronRight, CheckCircle2, Clock, AlertCircle, ShieldAlert, Target, Calendar, TrendingUp, Info, Activity, ReceiptText, Bot, Wallet } from "lucide-react";
+
 import { useCollection } from "@/hooks/useFirestore";
 import { useAuth } from "@/components/AuthProvider";
 import { SeedDataAlert } from "@/components/SeedDataAlert";
@@ -16,6 +21,7 @@ const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6', '#06b6d4'
 
 export default function DashboardPage() {
   const ObjectEntries = Object.entries;
+  const navigate = useNavigate();
   
   const { user } = useAuth();
   const { data: allTransactions, update: updateTx, add: addTx, loading: txLoading, error: txError } = useCollection<any>('transactions');
@@ -35,6 +41,7 @@ export default function DashboardPage() {
       totalPaid,
       totalPending,
       realBalance,
+      expectedEndMonthBalance,
       progressPercentage,
       savingsPercentage,
       riskLabel,
@@ -44,7 +51,7 @@ export default function DashboardPage() {
       categoryData,
       predictiveAlerts
     } = useMemo(() => {
-      if (!allTransactions) return { monthTransactions: [], grossIncome: 0, automaticDeductions: 0, realIncome: 0, totalExpense: 0, totalPaid: 0, totalPending: 0, realBalance: 0, progressPercentage: 0, savingsPercentage: 0, riskLabel: "Calculando...", riskColor: "text-slate-500", riskBg: "bg-slate-50", chartData: [], categoryData: [], predictiveAlerts: [] };
+      if (!allTransactions) return { monthTransactions: [], grossIncome: 0, automaticDeductions: 0, realIncome: 0, totalExpense: 0, totalPaid: 0, totalPending: 0, realBalance: 0, expectedEndMonthBalance: 0, progressPercentage: 0, savingsPercentage: 0, riskLabel: "Calculando...", riskColor: "text-slate-500", riskBg: "bg-slate-50", chartData: [], categoryData: [], predictiveAlerts: [] };
     
     // Filter by current month
     const currentMonthTxs = allTransactions.filter(t => {
@@ -60,12 +67,21 @@ export default function DashboardPage() {
     let expPaid = 0;
     let expPending = 0;
     
+    // For 'extrato' real feel
+    let currentlyReceivedIncome = 0;
+    const nowTime = new Date().getTime();
+    
     const categoryMap: Record<string, number> = {};
 
     currentMonthTxs.forEach(t => {
       const amt = Number(t.amount);
+      const isPastOrToday = new Date(t.date + 'T12:00:00').getTime() <= nowTime;
+
       if (t.type === "income") {
         grossInc += amt;
+        if (t.status === "paid" || isPastOrToday) {
+           currentlyReceivedIncome += amt;
+        }
       } else if (t.type === "deduction") {
         autoDed += amt;
       } else if (t.type === "expense") {
@@ -73,7 +89,6 @@ export default function DashboardPage() {
         if (t.status === "paid") {
           expPaid += amt;
         } else {
-          // Both "pending" and "late"
           expPending += amt;
         }
         
@@ -87,9 +102,11 @@ export default function DashboardPage() {
       value: categoryMap[key]
     })).sort((a, b) => b.value - a.value);
 
-      const realInc = grossInc - autoDed;
-    // Livre real = Receita Total Disponível - Total Comprometido
-    const realBalance = realInc - expAll; 
+    const realInc = grossInc - autoDed;
+    // Current available balance: what has dropped minus what was spent and paid
+    const realBalance = currentlyReceivedIncome - expPaid - autoDed; 
+    const expectedEndMonthBalance = realInc - expAll; // Livre real no final do mes
+    
     const progress = expAll > 0 ? Math.round((expPaid / expAll) * 100) : 0;
 
     // Predictive Alerts Logic
@@ -166,6 +183,7 @@ export default function DashboardPage() {
       totalPaid: expPaid,
       totalPending: expPending,
       realBalance,
+      expectedEndMonthBalance,
       progressPercentage: progress,
       savingsPercentage: realInc > 0 ? (realBalance / realInc) * 100 : 0,
       riskLabel: rLabel,
@@ -179,6 +197,87 @@ export default function DashboardPage() {
 
   const firstName = user?.displayName ? user.displayName.split(' ')[0] : 'Usuário';
   const formatCurrency = (val: number) => `R$ ${val.toFixed(2).replace('.', ',')}`;
+
+  const [isSyncing, setIsSyncing] = useState(false);
+  
+  const [openSalaryConfig, setOpenSalaryConfig] = useState(false);
+  const [salaryConfigForm, setSalaryConfigForm] = useState({ amount: "", date: "" });
+
+  const handleSaveSalary = async () => {
+    if (!salaryConfigForm.amount || !salaryConfigForm.date) return;
+    
+    // Find existing salary in the selected month
+    const targetMonthStr = salaryConfigForm.date.substring(0, 7);
+    const existingSalary = allTransactions?.find(t => 
+      t.type === "income" && 
+      (t.category === "Salário" || t.description.toLowerCase().includes("salário")) && 
+      t.date.substring(0, 7) === targetMonthStr
+    );
+
+    if (existingSalary) {
+      await updateTx(existingSalary.id, {
+        amount: parseFloat(salaryConfigForm.amount),
+        date: salaryConfigForm.date,
+        description: "Salário",
+      });
+    } else {
+      await addTx({
+        description: "Salário",
+        amount: parseFloat(salaryConfigForm.amount),
+        category: "Salário",
+        type: "income",
+        date: salaryConfigForm.date,
+        status: "pending", 
+        isFixed: true,
+        isRecurring: true
+      });
+    }
+    
+    setOpenSalaryConfig(false);
+    setSalaryConfigForm({ amount: "", date: "" });
+  };
+  
+  // Sincronização Automática de Despesas Fixas do Mês Anterior
+  useEffect(() => {
+    if (txLoading || !allTransactions || isSyncing) return;
+
+    const currentMonthStr = format(currentDate, "yyyy-MM");
+    const prevMonthDate = new Date(currentDate);
+    prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
+    const prevMonthStr = format(prevMonthDate, "yyyy-MM");
+
+    const prevFixed = allTransactions.filter(t => t.isFixed && t.date.substring(0, 7) === prevMonthStr);
+    const currentFixed = allTransactions.filter(t => t.isFixed && t.date.substring(0, 7) === currentMonthStr);
+
+    const missingFixed = prevFixed.filter(pf => 
+      !currentFixed.some(cf => cf.description === pf.description && cf.amount === pf.amount)
+    );
+
+    if (missingFixed.length > 0) {
+      setIsSyncing(true);
+      const syncFixed = async () => {
+        for (const pf of missingFixed) {
+          const newDate = new Date(pf.date + 'T12:00:00');
+          newDate.setMonth(currentDate.getMonth());
+          newDate.setFullYear(currentDate.getFullYear());
+          
+          await addTx({
+            description: pf.description,
+            amount: pf.amount,
+            category: pf.category,
+            type: pf.type,
+            date: format(newDate, "yyyy-MM-dd"),
+            status: 'pending',
+            isFixed: true,
+            isRecurring: pf.isRecurring,
+            installmentInfo: pf.installmentInfo
+          });
+        }
+        setIsSyncing(false);
+      };
+      syncFixed();
+    }
+  }, [allTransactions, currentDate, txLoading, addTx, isSyncing]);
 
   const handleMarkAsPaid = async (txId: string) => {
     await updateTx(txId, { status: "paid" });
@@ -219,10 +318,71 @@ export default function DashboardPage() {
 
       {/* Header & Month Selector */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
-        <div>
+        <div className="flex items-center gap-4">
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
              Visão Geral
           </h1>
+          <Button 
+            variant="outline" 
+            className="rounded-full gap-2 border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 h-9"
+            onClick={() => navigate('/app/assistente', { state: { initialMessage: `Olá IA, gere um relatório detalhado das minhas finanças referente ao mês de ${format(currentDate, "MMMM", { locale: ptBR })}. Analise meus gastos, ganhos, identifique onde posso melhorar e sugira ações.` } })}
+          >
+            <Bot className="w-4 h-4" /> Relatório Mês
+          </Button>
+
+          <Dialog open={openSalaryConfig} onOpenChange={setOpenSalaryConfig}>
+            <DialogTrigger asChild>
+              <Button 
+                variant="outline" 
+                className="rounded-full gap-2 border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 h-9"
+                onClick={() => {
+                  const currentMonthStr = format(currentDate, "yyyy-MM");
+                  const existingSalary = allTransactions?.find(t => 
+                    t.type === "income" && 
+                    (t.category === "Salário" || t.description.toLowerCase().includes("salário")) && 
+                    t.date.substring(0, 7) === currentMonthStr
+                  );
+                  if (existingSalary) {
+                    setSalaryConfigForm({ amount: existingSalary.amount.toString(), date: existingSalary.date });
+                  } else {
+                    setSalaryConfigForm({ amount: "", date: "" });
+                  }
+                }}
+              >
+                <Wallet className="w-4 h-4" /> Configurar Salário
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="rounded-[2rem]">
+              <DialogHeader>
+                <DialogTitle>Quando seu salário cai?</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Valor Estimado Previsto (R$)</Label>
+                  <Input 
+                     type="number" 
+                     placeholder="Ex: 3500.00" 
+                     value={salaryConfigForm.amount} 
+                     onChange={e => setSalaryConfigForm({...salaryConfigForm, amount: e.target.value})} 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Data Prevista</Label>
+                  <Input 
+                     type="date" 
+                     value={salaryConfigForm.date} 
+                     onChange={e => setSalaryConfigForm({...salaryConfigForm, date: e.target.value})} 
+                  />
+                  <p className="text-[11px] text-slate-500">Ele será lançado como uma entrada "Pendente" no extrato para te ajudar na projeção, e você pode dar "Check" quando receber!</p>
+                </div>
+              </div>
+              <DialogFooter>
+                 <Button onClick={handleSaveSalary} className="w-full rounded-2xl bg-slate-900 text-white hover:bg-slate-800">
+                    Registrar Previsão
+                 </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
         
         <div className="flex items-center gap-3 bg-white p-1.5 rounded-full shadow-sm border border-slate-100">
@@ -254,6 +414,7 @@ export default function DashboardPage() {
                </div>
              </div>
              <p className="text-3xl lg:text-4xl font-bold tracking-tight text-slate-800 z-10">{formatCurrency(realBalance)}</p>
+             <p className="text-xs text-slate-500 font-medium mt-1">Estimativa livre fim do mês: {formatCurrency(expectedEndMonthBalance)}</p>
           </div>
 
           {/* Entradas */}
@@ -354,28 +515,57 @@ export default function DashboardPage() {
                    <p className="text-slate-500 text-sm">Nenhum registro encontrado.</p>
                 </div>
               ) : (
-                 monthTransactions.slice(0, 5).map((tx: any) => {
+                 monthTransactions.map((tx: any) => {
                   const isIncome = tx.type === "income";
                   const isDeduction = tx.type === "deduction";
                   const isPaid = tx.status === "paid" || isDeduction;
+                  const isPastOrToday = new Date(tx.date + 'T12:00:00').getTime() <= new Date().getTime();
+                  const isOverdue = !isPaid && !isIncome && !isDeduction && isPastOrToday;
                   
                   return (
-                    <div key={tx.id} className="flex items-center justify-between bg-white p-4 rounded-[1.25rem] border border-slate-100 shadow-sm">
+                    <div key={tx.id} className={`flex items-center justify-between bg-white p-4 rounded-[1.25rem] border shadow-sm transition-all ${isOverdue ? 'border-rose-300 ring-2 ring-rose-100 shadow-rose-100/50 relative overflow-hidden' : 'border-slate-100'}`}>
+                       {isOverdue && (
+                         <div className="absolute top-0 right-0 w-8 h-8 bg-rose-50 rounded-bl-[1.25rem] flex items-center justify-center">
+                           <AlertCircle className="w-4 h-4 text-rose-500" />
+                         </div>
+                       )}
                        <div className="flex items-center gap-4">
-                         <div className={`p-2.5 rounded-xl shrink-0 ${isPaid && !isIncome && !isDeduction ? 'bg-slate-100 text-slate-400' : getCategoryColor(tx.category || tx.description, tx.type)}`}>
-                           {getCategoryIcon(tx.category || tx.description, tx.type)}
+                         <div className={`p-2.5 rounded-[14px] shrink-0 ${isOverdue ? 'bg-rose-100 text-rose-600' : isPaid && !isIncome && !isDeduction ? 'bg-slate-100 text-slate-400' : getCategoryColor(tx.category || tx.description, tx.type)}`}>
+                           {getCategoryIcon(tx.category || tx.description, tx.type, "w-5 h-5 stroke-[1.5]")}
                          </div>
                          <div>
-                            <p className={`font-semibold text-sm ${isPaid && !isDeduction && !isIncome ? 'text-slate-500 line-through' : 'text-slate-800'}`}>
+                            <p className={`font-semibold text-sm tracking-tight ${isOverdue ? 'text-rose-900' : isPaid && !isDeduction && !isIncome ? 'text-slate-500 line-through' : 'text-slate-800'}`}>
                               {tx.description}
                             </p>
-                            <p className="text-xs text-slate-400 mt-0.5">{tx.category || "Outros"}</p>
+                            <div className="flex flex-wrap items-center gap-2 mt-1">
+                               <p className="text-xs text-slate-400 font-medium">{new Date(tx.date + 'T12:00:00').toLocaleDateString('pt-BR', {day: '2-digit', month: 'short'})}</p>
+                               {isOverdue && (
+                                 <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 bg-rose-100 px-1.5 py-0.5 rounded text-left mt-0">Atrasado</span>
+                               )}
+                               {!isPaid && !isOverdue && !isIncome && (
+                                 <span className="text-[10px] font-bold uppercase tracking-wider text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded text-left mt-0">Pendente</span>
+                               )}
+                               {!isPaid && isIncome && (
+                                 <span className="text-[10px] font-bold uppercase tracking-wider text-violet-500 bg-violet-50 px-1.5 py-0.5 rounded text-left mt-0">Previsto</span>
+                               )}
+                            </div>
                          </div>
                        </div>
-                       <div className="text-right">
-                          <p className={`font-bold text-sm ${isIncome ? 'text-violet-600' : isDeduction ? 'text-rose-600' : 'text-slate-800'}`}>
-                             {isIncome ? '+' : '-'} {formatCurrency(Number(tx.amount))}
-                          </p>
+                       <div className="flex items-center gap-2 z-10">
+                         <div className="text-right">
+                            <p className={`font-bold text-[15px] tracking-tight ${isOverdue ? 'text-rose-600' : isIncome ? 'text-violet-600' : isDeduction ? 'text-rose-600' : 'text-slate-800'}`}>
+                               {isIncome ? '+' : '-'} {formatCurrency(Number(tx.amount))}
+                            </p>
+                         </div>
+                         {!isPaid && !isDeduction && (
+                           <button 
+                             onClick={() => handleMarkAsPaid(tx.id)}
+                             title="Marcar como Pago/Recebido"
+                             className="ml-2 w-8 h-8 rounded-full border-2 border-slate-200 text-slate-300 hover:border-emerald-500 hover:text-emerald-500 hover:bg-emerald-50 flex items-center justify-center shrink-0 transition-all bg-white"
+                           >
+                             <CheckCircle2 className="w-5 h-5" />
+                           </button>
+                         )}
                        </div>
                     </div>
                   )

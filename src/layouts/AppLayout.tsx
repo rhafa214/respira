@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { LayoutDashboard, WalletCards, TrendingDown, Target, User, LifeBuoy, Bell, Sparkles, LogOut, ArrowLeftRight, Repeat, Moon, Sun, Landmark, Leaf, Menu, X, ShoppingBag } from "lucide-react";
+import { LayoutDashboard, WalletCards, TrendingDown, Target, User, LifeBuoy, Bell, Sparkles, LogOut, ArrowLeftRight, Repeat, Moon, Sun, Landmark, Leaf, Menu, X, ShoppingBag, ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/AuthProvider";
 import { GlobalChatFAB } from "@/components/GlobalChatFAB";
@@ -11,6 +11,7 @@ import { useTheme } from "@/components/ThemeProvider";
 const navItems = [
   { icon: LayoutDashboard, label: "Mês Atual", path: "/app" },
   { icon: ArrowLeftRight, label: "Gastos", path: "/app/lancamentos" },
+  { icon: ShoppingCart, label: "Mercado", path: "/app/mercado" },
   { icon: Target, label: "Orçamentos", path: "/app/orcamento" },
   { icon: Landmark, label: "Bancos e Cartões", path: "/app/bancos" },
   { icon: Target, label: "Sonhos e Metas", path: "/app/metas" },

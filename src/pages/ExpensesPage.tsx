@@ -274,6 +274,14 @@ export default function ExpensesPage() {
                 <option value="Transporte">Transporte</option>
                 <option value="Saúde">Saúde</option>
                 <option value="Educação">Educação</option>
+                <option value="Lazer">Lazer</option>
+                <option value="Vestuário">Vestuário</option>
+                <option value="Beleza">Beleza</option>
+                <option value="Contas Base">Contas Base</option>
+                <option value="Cartões e Taxas">Cartões e Taxas</option>
+                <option value="Assinaturas">Assinaturas</option>
+                <option value="Serviços">Serviços</option>
+                <option value="Presentes/Doações">Presentes/Doações</option>
                 <option value="Outros">Outros</option>
               </select>
             </div>
@@ -337,6 +345,14 @@ export default function ExpensesPage() {
                   <option value="Transporte">Transporte</option>
                   <option value="Saúde">Saúde</option>
                   <option value="Educação">Educação</option>
+                  <option value="Lazer">Lazer</option>
+                  <option value="Vestuário">Vestuário</option>
+                  <option value="Beleza">Beleza</option>
+                  <option value="Contas Base">Contas Base</option>
+                  <option value="Cartões e Taxas">Cartões e Taxas</option>
+                  <option value="Assinaturas">Assinaturas</option>
+                  <option value="Serviços">Serviços</option>
+                  <option value="Presentes/Doações">Presentes/Doações</option>
                   <option value="Outros">Outros</option>
                 </select>
               </div>

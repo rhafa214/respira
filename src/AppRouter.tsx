@@ -9,6 +9,7 @@ import GoalsPage from "@/pages/GoalsPage";
 import WishlistPage from "@/pages/WishlistPage";
 import AssistantPage from "@/pages/AssistantPage";
 import BudgetPage from "@/pages/BudgetPage";
+import MarketListPage from "@/pages/MarketListPage";
 import { AuthProvider, useAuth } from "@/components/AuthProvider";
 import { ChatProvider } from "@/components/ChatContext";
 import { MonthProvider } from "@/components/MonthContext";
@@ -58,6 +59,16 @@ export function AppRouter() {
               <ProtectedRoute>
                 <AppLayout>
                   <ExpensesPage />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/app/mercado"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <MarketListPage />
                 </AppLayout>
               </ProtectedRoute>
             }

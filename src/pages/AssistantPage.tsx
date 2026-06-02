@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect } from "react";
+import { useLocation } from "react-router-dom";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { GoogleGenAI, Type, FunctionDeclaration } from "@google/genai";
-import { collection, query, where, getDocs, addDoc, updateDoc, doc } from "firebase/firestore";
+import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
@@ -32,8 +35,9 @@ function pcmToBase64(pcmData: Float32Array): string {
 
 export default function AssistantPage() {
   const { user } = useAuth();
+  const location = useLocation();
   const [messages, setMessages] = useState<{ role: "model" | "user", text: string }[]>([
-    { role: "model", text: "Olá! Sou sua assistente financeira pessoal. Como posso te ajudar a organizar suas contas ou quitar suas dívidas hoje?" }
+    { role: "model", text: "Olá! Sou sua assistente financeira pessoal. Como posso te ajudar a organizar suas contas ou revisar seu mês?" }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -56,29 +60,45 @@ export default function AssistantPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  const handleSend = async (audioBase64?: string) => {
-    if ((!input.trim() && !audioBase64) || !user) return;
+  useEffect(() => {
+    if (location.state?.initialMessage) {
+      handleSend(undefined, location.state.initialMessage);
+      // clear the state so it doesn't run again on reload if not intended, but usually it's fine
+    }
+  }, [location.state]);
 
-    const userMessage = input.trim();
-    setInput("");
+  const handleSend = async (audioBase64?: string, textParam?: string) => {
+    const textToSend = textParam || input;
+    if ((!textToSend.trim() && !audioBase64) || !user) return;
+
+    const userMessage = textToSend.trim();
+    if (!textParam) setInput("");
+    
     setMessages(prev => [...prev, { role: "user", text: userMessage || "🎙️ Áudio enviado" }]);
     setLoading(true);
 
     try {
       // Fetch user data context
       const uid = user.uid;
+      const currentMonthStr = format(new Date(), "yyyy-MM");
+      
       const transactionsSnap = await getDocs(query(collection(db, "transactions"), where("userId", "==", uid)));
       const debtsSnap = await getDocs(query(collection(db, "debts"), where("userId", "==", uid)));
       const goalsSnap = await getDocs(query(collection(db, "goals"), where("userId", "==", uid)));
+      const marketSnap = await getDocs(query(collection(db, `market_items_${currentMonthStr}`), where("userId", "==", uid)));
+      const marketBudgetSnap = await getDoc(doc(db, "market_budgets", currentMonthStr));
 
       const transactions = transactionsSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
       const debts = debtsSnap.docs.map(d => d.data());
       const goals = goalsSnap.docs.map(d => d.data());
+      const marketItems = marketSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
+      const marketBudget = marketBudgetSnap.exists() ? marketBudgetSnap.data().amount : null;
 
       let contextStr = `Cenário Financeiro do Usuário (seja acolhedor, conciso, como um consultor pessoal expert):\n\n`;
       contextStr += `Transações recentes (${transactions.length}):\n${transactions.slice(-15).map(t => `- ID: ${t.id} | Descrição: ${t.description} | R$ ${t.amount} em ${t.category} (${t.type}) dia ${t.date} ${t.installmentInfo ? '| Parcela: '+t.installmentInfo : ''}`).join('\n')}\n`;
       contextStr += `Dívidas ativas:\n${debts.map(d => `- ${d.bank}: Restam R$ ${d.remaining} de R$ ${d.total} (Status: ${d.status})`).join('\n')}\n`;
       contextStr += `Metas:\n${goals.map(g => `- ${g.title}: R$ ${g.current} de R$ ${g.target}`).join('\n')}\n`;
+      contextStr += `Lista de Mercado (Mês ${currentMonthStr}): ${marketBudget ? `(Orçamento Mensal Mercado: R$ ${marketBudget})` : ''}\n${marketItems.map(m => `- ID: ${m.id} | ${m.name} | Previsto: R$ ${m.estimatedPrice} | Gasto: R$ ${m.actualPrice} | Comprado: ${m.purchased ? 'Sim' : 'Não'}`).join('\n')}\n`;
 
       const apiKey = process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
       if (!apiKey) {
@@ -127,6 +147,33 @@ export default function AssistantPage() {
         }
       };
 
+      const addMarketItemDeclaration: FunctionDeclaration = {
+        name: "addMarketItem",
+        description: "Adiciona um novo item à lista de compras de mercado do mês atual.",
+        parameters: {
+          type: Type.OBJECT,
+          properties: {
+            name: { type: Type.STRING, description: "O nome do item (ex: Arroz 5kg)" },
+            estimatedPrice: { type: Type.NUMBER, description: "O preço estimado do item, se houver" }
+          },
+          required: ["name"]
+        }
+      };
+
+      const updateMarketItemDeclaration: FunctionDeclaration = {
+        name: "updateMarketItem",
+        description: "Atualiza um item da lista de compras (preço real ou comprado).",
+        parameters: {
+          type: Type.OBJECT,
+          properties: {
+            itemId: { type: Type.STRING, description: "O ID do item de mercado" },
+            actualPrice: { type: Type.NUMBER, description: "O preço realmente pago ao colocar no carrinho" },
+            purchased: { type: Type.BOOLEAN, description: "Se o item foi comprado / colocado no carrinho" }
+          },
+          required: ["itemId"]
+        }
+      };
+
       const contents: any[] = [promptContext];
       if (audioBase64) {
         contents.push({
@@ -141,9 +188,9 @@ export default function AssistantPage() {
         model: "gemini-2.5-flash",
         contents: contents,
         config: {
-          systemInstruction: "Você é o 'Consultor IA', especialista financeiro. Você pode responder perguntas e ajudar o usuário a registrar ou atualizar transações com as funções fornecidas. Se ele pedir para atualizar ou editar algo, localize o ID na lista e use updateTransaction. Não mencione o ID textualmente na resposta, apenas diga que alterou de forma amigável e qual foi a alteração.",
+          systemInstruction: "Você é o 'Consultor IA', especialista financeiro. Você pode responder perguntas e ajudar o usuário a registrar ou atualizar transações com as funções fornecidas. Se ele pedir para atualizar ou editar algo, localize o ID na lista e use updateTransaction. Pode também atualizar itens na sua lista de mercado. Não mencione o ID textualmente na resposta, apenas diga que alterou de forma amigável.",
           temperature: 0.7,
-          tools: [{ functionDeclarations: [addTransactionDeclaration, updateTransactionDeclaration] }]
+          tools: [{ functionDeclarations: [addTransactionDeclaration, updateTransactionDeclaration, addMarketItemDeclaration, updateMarketItemDeclaration] }]
         }
       });
       
@@ -153,6 +200,8 @@ export default function AssistantPage() {
       if (functionCalls && functionCalls.length > 0) {
         let addedCount = 0;
         let updatedCount = 0;
+        let addedMarketCount = 0;
+        let updatedMarketCount = 0;
         for (const call of functionCalls) {
           if (call.name === 'addTransaction') {
             const args = call.args as any;
@@ -165,6 +214,7 @@ export default function AssistantPage() {
                 description: args.description || "",
                 installmentInfo: args.installmentInfo,
                 userId: uid,
+                status: 'paid', // default assumption
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
               });
@@ -190,11 +240,42 @@ export default function AssistantPage() {
                console.error("Falha ao atualizar:", err);
              }
           }
+          if (call.name === 'addMarketItem') {
+            const args = call.args as any;
+            try {
+              await addDoc(collection(db, `market_items_${currentMonthStr}`), {
+                name: args.name,
+                estimatedPrice: args.estimatedPrice || 0,
+                actualPrice: 0,
+                purchased: false,
+                userId: uid,
+                createdAt: new Date().toISOString()
+              });
+              addedMarketCount++;
+            } catch (err) {
+              console.error("Falha ao adicionar item de mercado:", err);
+            }
+          }
+          if (call.name === 'updateMarketItem') {
+            const args = call.args as any;
+            try {
+              const updateData: any = {};
+              if (args.actualPrice !== undefined) updateData.actualPrice = args.actualPrice;
+              if (args.purchased !== undefined) updateData.purchased = args.purchased;
+              
+              await updateDoc(doc(db, `market_items_${currentMonthStr}`, args.itemId), updateData);
+              updatedMarketCount++;
+            } catch (err) {
+              console.error("Falha ao atualizar item de mercado:", err);
+            }
+          }
         }
         
         if (!finalMessage) {
            if (addedCount > 0) finalMessage = `Pronto! Registrei ${addedCount > 1 ? 'as transações' : 'a transação'} pra você. Tudo certo.`;
            if (updatedCount > 0) finalMessage = finalMessage ? finalMessage + ` Ah, e atualizei ${updatedCount > 1 ? 'as informações que você pediu' : 'a informação que você pediu'} também.` : `Pronto! Atualizei a transação pra você.`;
+           if (addedMarketCount > 0) finalMessage = `Adicionei ${addedMarketCount} itens na sua Lista de Mercado daquele mês!`;
+           if (updatedMarketCount > 0) finalMessage = `Atualizei ${updatedMarketCount} itens no seu mercado.`;
         }
       }
 
