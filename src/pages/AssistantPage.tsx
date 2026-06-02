@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sparkles, Send, Loader2, Bot, User, Mic, Square, Volume2, Phone, PhoneOff } from "lucide-react";
 import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 // Helper for pcm
 function pcmToBase64(pcmData: Float32Array): string {
@@ -403,15 +404,15 @@ export default function AssistantPage() {
                <div className={`px-5 py-3.5 rounded-2xl max-w-[85%] text-sm sm:text-base ${m.role === 'model' ? 'bg-slate-50 text-slate-800 rounded-tl-sm' : 'bg-emerald-500 text-white rounded-tr-sm'}`}>
                   {m.role === 'model' ? (
                      <div className="flex flex-col gap-2">
-                       <div className="markdown-body prose prose-slate prose-sm sm:prose-base leading-relaxed">
-                         <Markdown>{m.text}</Markdown>
+                       <div className="markdown-body prose prose-slate prose-sm sm:prose-base leading-relaxed whitespace-pre-wrap">
+                         <Markdown remarkPlugins={[remarkGfm]}>{m.text}</Markdown>
                        </div>
                        <button onClick={() => speakText(m.text)} className="self-end text-slate-400 hover:text-indigo-600 transition-colors p-1" title="Ouvir mensagem">
                          <Volume2 className="w-4 h-4" />
                        </button>
                      </div>
                   ) : (
-                     m.text
+                    <span className="whitespace-pre-wrap">{m.text}</span>
                   )}
                </div>
              </div>

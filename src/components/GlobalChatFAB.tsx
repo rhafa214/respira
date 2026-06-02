@@ -4,6 +4,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Bot, X, Send, Loader2, User, Sparkles, Mic, Square, Volume2, Phone, PhoneOff } from "lucide-react";
 import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { useAuth } from "./AuthProvider";
 
 // Helper for pcm
@@ -276,15 +277,15 @@ function ChatPanel() {
             }`}>
               {m.role === 'model' ? (
                 <div className="flex flex-col gap-2">
-                  <div className="markdown-body prose prose-slate prose-sm max-w-none leading-relaxed">
-                    <Markdown>{m.text}</Markdown>
+                  <div className="markdown-body prose prose-slate prose-sm max-w-none leading-relaxed whitespace-pre-wrap">
+                    <Markdown remarkPlugins={[remarkGfm]}>{m.text}</Markdown>
                   </div>
                   <button onClick={() => speakText(m.text)} className="self-end text-slate-400 hover:text-indigo-600 transition-colors p-1" title="Ouvir mensagem">
                     <Volume2 className="w-3 h-3" />
                   </button>
                 </div>
               ) : (
-                m.text
+                <span className="whitespace-pre-wrap">{m.text}</span>
               )}
             </div>
           </div>
