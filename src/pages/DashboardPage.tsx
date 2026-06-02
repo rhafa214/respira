@@ -247,175 +247,176 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="max-w-xl mx-auto px-4 py-8 space-y-5 animate-in fade-in duration-500 pb-24">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-12 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-24">
       <SeedDataAlert />
 
       {/* Header & Month Selector */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
              Visão Geral
           </h1>
         </div>
         
-        <div className="flex items-center gap-3 bg-white p-1 rounded-full shadow-sm border border-slate-100">
-          <Button variant="ghost" size="icon" onClick={handlePrevMonth} className="rounded-full w-8 h-8 hover:bg-slate-100">
-            <ChevronLeft className="w-4 h-4 text-slate-600" />
+        <div className="flex items-center gap-3 bg-white p-1.5 rounded-full shadow-sm border border-slate-100">
+          <Button variant="ghost" size="icon" onClick={handlePrevMonth} className="rounded-full w-9 h-9 hover:bg-slate-100">
+            <ChevronLeft className="w-5 h-5 text-slate-600" />
           </Button>
-          <span className="w-24 text-center font-bold text-slate-800 text-sm capitalize">
+          <span className="w-28 text-center font-bold text-slate-800 text-sm capitalize">
             {format(currentDate, "MMMM", { locale: ptBR })}
           </span>
-          <Button variant="ghost" size="icon" onClick={handleNextMonth} className="rounded-full w-8 h-8 hover:bg-slate-100">
-            <ChevronRight className="w-4 h-4 text-slate-600" />
+          <Button variant="ghost" size="icon" onClick={handleNextMonth} className="rounded-full w-9 h-9 hover:bg-slate-100">
+            <ChevronRight className="w-5 h-5 text-slate-600" />
           </Button>
         </div>
       </div>
 
-      {/* Saldo Atual Pill */}
-      <div className={`${realBalance >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-rose-50 border-rose-100'} border rounded-full px-6 py-4 flex items-center gap-4 transition-colors`}>
-         <div className={`w-8 h-8 rounded-full ${realBalance >= 0 ? 'bg-emerald-500' : 'bg-rose-500'} text-white flex items-center justify-center shrink-0 shadow-sm transition-colors`}>
-           {realBalance >= 0 ? (
-             <ArrowUpRight className="w-5 h-5" />
-           ) : (
-             <ArrowDownRight className="w-5 h-5" />
-           )}
-         </div>
-         <span className="text-3xl font-bold tracking-tight text-slate-800">{formatCurrency(realBalance)}</span>
-         <div className={`ml-auto ${realBalance >= 0 ? 'text-emerald-700 bg-emerald-100' : 'text-rose-700 bg-rose-100'} px-3 py-1 text-xs font-bold rounded-full uppercase tracking-widest hidden sm:block transition-colors`}>
-            Saldo
-         </div>
-      </div>
-
-      {/* Entradas */}
-      <div className="bg-[#f8f5ff] border border-violet-100 rounded-[2rem] p-6 relative overflow-hidden group hover:shadow-md transition-shadow">
-         <div className="flex justify-between items-start">
-            <div className="flex items-center gap-3">
-               <div className="bg-violet-100 p-3 rounded-2xl text-violet-600 shadow-sm">
-                  <TrendingUp className="w-6 h-6" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {/* Saldo Atual Pill */}
+          <div className={`${realBalance >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-rose-50 border-rose-100'} border rounded-[2rem] px-6 py-6 flex flex-col justify-center relative overflow-hidden transition-colors`}>
+             <div className="flex items-center gap-4 mb-4">
+               <div className={`w-12 h-12 rounded-full ${realBalance >= 0 ? 'bg-emerald-500' : 'bg-rose-500'} text-white flex items-center justify-center shrink-0 shadow-sm transition-colors z-10`}>
+                 {realBalance >= 0 ? (
+                   <ArrowUpRight className="w-6 h-6" />
+                 ) : (
+                   <ArrowDownRight className="w-6 h-6" />
+                 )}
                </div>
-               <div>
-                  <p className="text-xs font-bold uppercase tracking-widest text-violet-600">Entradas do Mês</p>
-                  <div className="flex items-center gap-1.5 text-violet-400 text-sm font-medium mt-0.5">
-                     {monthYearString} <Calendar className="w-3.5 h-3.5" />
-                  </div>
+               <div className={`ml-auto ${realBalance >= 0 ? 'text-emerald-700 bg-emerald-100' : 'text-rose-700 bg-rose-100'} px-3 py-1 text-xs font-bold rounded-full uppercase tracking-widest z-10 transition-colors`}>
+                  Saldo
                </div>
-            </div>
-            <div className="bg-white/60 p-2 rounded-full text-violet-400 shadow-sm">
-               <ChevronRight className="w-5 h-5" />
-            </div>
-         </div>
-         
-         <div className="mt-6">
-            <p className="text-4xl font-bold tracking-tight text-violet-950">{formatCurrency(grossIncome)}</p>
-         </div>
-         
-         {grossIncome === 0 && (
-             <div className="mt-5 bg-violet-100/50 p-4 rounded-[1rem] flex items-start gap-3">
-                <Info className="w-5 h-5 text-violet-500 shrink-0 mt-0.5" />
-                <div>
-                   <p className="text-sm font-medium text-violet-900">Nenhuma entrada registrada</p>
-                   <p className="text-xs text-violet-700 mt-1 leading-relaxed">Adicione sua primeira entrada para ver o gráfico crescer.</p>
-                </div>
              </div>
-         )}
-      </div>
+             <p className="text-3xl lg:text-4xl font-bold tracking-tight text-slate-800 z-10">{formatCurrency(realBalance)}</p>
+          </div>
 
-      {/* Gastos */}
-      <div className="bg-[#f0fdf4] border border-emerald-100 rounded-[2rem] p-6 relative overflow-hidden group hover:shadow-md transition-shadow">
-         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-1/2 bg-emerald-400 rounded-r-lg" />
-         <div className="flex justify-between items-start pl-2">
-            <div className="flex items-center gap-3">
-               <div className="text-emerald-500">
-                  <ReceiptText className="w-6 h-6" />
-               </div>
-               <p className="text-lg font-bold text-slate-800">Gastos</p>
-            </div>
-            <div className="text-emerald-600 text-sm font-medium flex items-center gap-2">
-               Mês de {format(currentDate, "MMMM", { locale: ptBR })}
-               <ChevronRight className="w-4 h-4 opacity-50" />
-            </div>
-         </div>
-         
-         <div className="mt-6 pl-2">
-            <p className="text-4xl font-bold tracking-tight text-slate-900">{formatCurrency(totalExpense)}</p>
-         </div>
-      </div>
-
-      {/* Desafios & Insights (Substituindo o layout antigo) */}
-      <div className="pt-4">
-        <div className="flex justify-between items-center mb-4">
-           <h3 className="text-lg font-bold text-slate-900">IA Financeira</h3>
-           <span className="text-emerald-600 text-sm font-semibold">Ver Análise</span>
-        </div>
-        
-        <Card className="bg-white border border-slate-200 rounded-[1.5rem] shadow-sm overflow-hidden">
-          <CardContent className="p-0">
-             <div className="p-5 border-b border-slate-100 flex items-start gap-4">
-                <div className="bg-emerald-50 p-3 rounded-2xl text-emerald-600 shrink-0">
-                   <Target className="w-6 h-6" />
-                </div>
-                <div>
-                   <p className="font-bold text-slate-800">Progresso do Mês</p>
-                   <p className="text-sm text-slate-500 mt-1 leading-relaxed">{aiInsights()}</p>
+          {/* Entradas */}
+          <div className="bg-[#f8f5ff] border border-violet-100 rounded-[2rem] p-6 relative overflow-hidden group hover:shadow-md transition-shadow">
+             <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-3">
+                   <div className="bg-violet-100 p-3 rounded-2xl text-violet-600 shadow-sm">
+                      <TrendingUp className="w-6 h-6" />
+                   </div>
+                   <div>
+                      <p className="text-xs font-bold uppercase tracking-widest text-violet-600">Entradas</p>
+                      <div className="flex items-center gap-1.5 text-violet-400 text-sm font-medium mt-0.5">
+                         {monthYearString} <Calendar className="w-3.5 h-3.5" />
+                      </div>
+                   </div>
                 </div>
              </div>
              
-             {predictiveAlerts.length > 0 && predictiveAlerts.slice(0,1).map((alert, idx) => (
-               <div key={idx} className="p-5 bg-orange-50 flex items-start gap-4 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-4 opacity-10">
-                     <AlertCircle className="w-20 h-20 text-orange-900" />
-                  </div>
-                  <div className="bg-white p-2.5 rounded-xl text-orange-500 shadow-sm shrink-0 z-10">
-                     <AlertCircle className="w-5 h-5" />
-                  </div>
-                  <div className="z-10 relative">
-                     <p className="font-bold text-orange-900">Alerta de Gastos</p>
-                     <p className="text-sm text-orange-800 mt-1 leading-relaxed">{alert}</p>
-                  </div>
-               </div>
-             ))}
-          </CardContent>
-        </Card>
-      </div>
+             <div className="mt-2">
+                <p className="text-3xl lg:text-4xl font-bold tracking-tight text-violet-950">{formatCurrency(grossIncome)}</p>
+             </div>
+          </div>
 
-      {/* Transações Recentes Simplificado */}
-      <div className="pt-4">
-        <div className="flex justify-between items-center mb-4">
-           <h3 className="text-lg font-bold text-slate-900">Transações</h3>
-        </div>
-        <div className="space-y-3">
-          {monthTransactions.length === 0 ? (
-            <div className="text-center px-6 py-8 border border-dashed border-slate-200 rounded-[1.5rem]">
-               <p className="text-slate-500 text-sm">Nenhum registro encontrado.</p>
-            </div>
-          ) : (
-             monthTransactions.slice(0, 5).map((tx: any) => {
-              const isIncome = tx.type === "income";
-              const isDeduction = tx.type === "deduction";
-              const isPaid = tx.status === "paid" || isDeduction;
-              
-              return (
-                <div key={tx.id} className="flex items-center justify-between bg-white p-4 rounded-[1.25rem] border border-slate-100 shadow-sm">
-                   <div className="flex items-center gap-4">
-                     <div className={`p-2.5 rounded-xl shrink-0 ${isPaid && !isIncome && !isDeduction ? 'bg-slate-100 text-slate-400' : getCategoryColor(tx.category || tx.description, tx.type)}`}>
-                       {getCategoryIcon(tx.category || tx.description, tx.type)}
-                     </div>
-                     <div>
-                        <p className={`font-semibold text-sm ${isPaid && !isDeduction && !isIncome ? 'text-slate-500 line-through' : 'text-slate-800'}`}>
-                          {tx.description}
-                        </p>
-                        <p className="text-xs text-slate-400 mt-0.5">{tx.category || "Outros"}</p>
-                     </div>
-                   </div>
-                   <div className="text-right">
-                      <p className={`font-bold text-sm ${isIncome ? 'text-violet-600' : isDeduction ? 'text-rose-600' : 'text-slate-800'}`}>
-                         {isIncome ? '+' : '-'} {formatCurrency(Number(tx.amount))}
-                      </p>
+          {/* Gastos */}
+          <div className="bg-[#f0fdf4] border border-emerald-100 rounded-[2rem] p-6 relative overflow-hidden group hover:shadow-md transition-shadow flex flex-col justify-between">
+             <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-1/2 bg-emerald-400 rounded-r-lg" />
+             <div className="flex justify-between items-start pl-2 mb-4">
+                <div className="flex items-center gap-3 text-emerald-500">
+                   <ReceiptText className="w-7 h-7" />
+                   <div>
+                      <p className="text-xs font-bold uppercase tracking-widest text-emerald-600">Gastos</p>
+                      <div className="flex items-center gap-1.5 text-emerald-400 text-sm font-medium mt-0.5">
+                         Neste mês <Calendar className="w-3.5 h-3.5" />
+                      </div>
                    </div>
                 </div>
-              )
-             })
-          )}
+             </div>
+             
+             <div className="pl-2 mt-2">
+                <p className="text-3xl lg:text-4xl font-bold tracking-tight text-slate-900">{formatCurrency(totalExpense)}</p>
+             </div>
+          </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        {/* Left/Middle Column (Insights) */}
+        <div className="space-y-6">
+          
+          {/* Desafios & Insights */}
+          <div>
+            <div className="flex justify-between items-center mb-4">
+               <h3 className="text-lg font-bold text-slate-900">IA Financeira</h3>
+               <span className="text-emerald-600 text-sm font-semibold cursor-pointer hover:underline">Ver Análise</span>
+            </div>
+            
+            <Card className="bg-white border border-slate-200 rounded-[1.5rem] shadow-sm overflow-hidden">
+              <CardContent className="p-0">
+                 <div className="p-5 border-b border-slate-100 flex items-start gap-4">
+                    <div className="bg-emerald-50 p-3 rounded-2xl text-emerald-600 shrink-0">
+                       <Target className="w-6 h-6" />
+                    </div>
+                    <div>
+                       <p className="font-bold text-slate-800">Progresso do Mês</p>
+                       <p className="text-sm text-slate-500 mt-1 leading-relaxed">{aiInsights()}</p>
+                    </div>
+                 </div>
+                 
+                 {predictiveAlerts.length > 0 && predictiveAlerts.slice(0,1).map((alert, idx) => (
+                   <div key={idx} className="p-5 bg-orange-50 flex items-start gap-4 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 p-4 opacity-10">
+                         <AlertCircle className="w-20 h-20 text-orange-900" />
+                      </div>
+                      <div className="bg-white p-2.5 rounded-xl text-orange-500 shadow-sm shrink-0 z-10">
+                         <AlertCircle className="w-5 h-5" />
+                      </div>
+                      <div className="z-10 relative">
+                         <p className="font-bold text-orange-900">Alerta de Gastos</p>
+                         <p className="text-sm text-orange-800 mt-1 leading-relaxed">{alert}</p>
+                      </div>
+                   </div>
+                 ))}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Right Column (Transactions) */}
+        <div>
+          {/* Transações Recentes Simplificado */}
+          <div>
+            <div className="flex justify-between items-center mb-4">
+               <h3 className="text-lg font-bold text-slate-900">Transações</h3>
+            </div>
+            <div className="space-y-3">
+              {monthTransactions.length === 0 ? (
+                <div className="text-center px-6 py-8 border border-dashed border-slate-200 rounded-[1.5rem]">
+                   <p className="text-slate-500 text-sm">Nenhum registro encontrado.</p>
+                </div>
+              ) : (
+                 monthTransactions.slice(0, 5).map((tx: any) => {
+                  const isIncome = tx.type === "income";
+                  const isDeduction = tx.type === "deduction";
+                  const isPaid = tx.status === "paid" || isDeduction;
+                  
+                  return (
+                    <div key={tx.id} className="flex items-center justify-between bg-white p-4 rounded-[1.25rem] border border-slate-100 shadow-sm">
+                       <div className="flex items-center gap-4">
+                         <div className={`p-2.5 rounded-xl shrink-0 ${isPaid && !isIncome && !isDeduction ? 'bg-slate-100 text-slate-400' : getCategoryColor(tx.category || tx.description, tx.type)}`}>
+                           {getCategoryIcon(tx.category || tx.description, tx.type)}
+                         </div>
+                         <div>
+                            <p className={`font-semibold text-sm ${isPaid && !isDeduction && !isIncome ? 'text-slate-500 line-through' : 'text-slate-800'}`}>
+                              {tx.description}
+                            </p>
+                            <p className="text-xs text-slate-400 mt-0.5">{tx.category || "Outros"}</p>
+                         </div>
+                       </div>
+                       <div className="text-right">
+                          <p className={`font-bold text-sm ${isIncome ? 'text-violet-600' : isDeduction ? 'text-rose-600' : 'text-slate-800'}`}>
+                             {isIncome ? '+' : '-'} {formatCurrency(Number(tx.amount))}
+                          </p>
+                       </div>
+                    </div>
+                  )
+                 })
+              )}
+            </div>
+          </div>
+          
         </div>
       </div>
     </div>

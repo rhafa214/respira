@@ -75,7 +75,7 @@ export default function ExpensesPage() {
   };
 
   return (
-    <div className="max-w-xl mx-auto px-4 py-8 space-y-6 animate-in fade-in duration-500 pb-24">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-12 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-24">
       
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold tracking-tight text-slate-900">Gastos</h1>

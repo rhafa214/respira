@@ -230,7 +230,7 @@ function ChatPanel() {
   };
 
   return (
-    <div className="fixed bottom-24 right-4 sm:right-6 w-[calc(100vw-32px)] sm:w-[400px] h-[500px] max-h-[calc(100vh-140px)] bg-white rounded-3xl shadow-2xl border border-slate-100 flex flex-col z-50 overflow-hidden animate-in slide-in-from-bottom-5 fade-in duration-300 relative">
+    <div className="fixed bottom-24 md:bottom-24 right-4 md:right-8 w-[calc(100vw-32px)] sm:w-[400px] h-[500px] max-h-[calc(100vh-140px)] bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col z-50 overflow-hidden animate-in slide-in-from-bottom-5 fade-in duration-300">
       {/* Header */}
       <div className="bg-indigo-600 p-4 text-white flex justify-between items-center shrink-0">
         <div className="flex items-center gap-3">
