@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppLayout } from "@/layouts/AppLayout";
 import DashboardPage from "@/pages/DashboardPage";
 import DebtsPage from "@/pages/DebtsPage";
+import LoansPage from "@/pages/LoansPage";
 import BankAccountsPage from "@/pages/BankAccountsPage";
 import LandingPage from "@/pages/LandingPage";
 import ExpensesPage from "@/pages/ExpensesPage";
@@ -89,6 +90,16 @@ export function AppRouter() {
               <ProtectedRoute>
                 <AppLayout>
                   <DebtsPage />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/app/emprestimos"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <LoansPage />
                 </AppLayout>
               </ProtectedRoute>
             }

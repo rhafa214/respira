@@ -72,7 +72,53 @@ export default function ExpensesPage() {
   const handleAdd = async () => {
     if (!newTx.description || !newTx.amount || !newTx.date) return;
     setAdding(true);
-    await add({...newTx, type: activeTab === 'income' ? 'income' : 'expense', isFixed: activeTab === 'fixed'} as Omit<Transaction, 'id' | 'userId' | 'createdAt'>);
+    
+    try {
+      const baseTx = {
+        ...newTx,
+        type: activeTab === 'income' ? 'income' : 'expense',
+        isFixed: activeTab === 'fixed'
+      } as Omit<Transaction, 'id' | 'userId' | 'createdAt'>;
+
+      const dateObj = new Date(baseTx.date + 'T12:00:00');
+      
+      let matchInstallment = baseTx.installmentInfo ? baseTx.installmentInfo.match(/^(\d+)\/(\d+)$/) : null;
+
+      if (matchInstallment) {
+        let current = parseInt(matchInstallment[1]);
+        let total = parseInt(matchInstallment[2]);
+        
+        for (let i = 0; i <= (total - current); i++) {
+          let instDate = new Date(dateObj);
+          instDate.setMonth(instDate.getMonth() + i);
+          let tx = {
+            ...baseTx,
+            date: format(instDate, 'yyyy-MM-dd'),
+            installmentInfo: `${current + i}/${total}`
+          };
+          if (i > 0) tx.status = 'pending';
+          await add(tx);
+        }
+      } else if (baseTx.isFixed) {
+        // fixed expense without installment info - project 12 months
+        for (let i = 0; i < 12; i++) {
+          let instDate = new Date(dateObj);
+          instDate.setMonth(instDate.getMonth() + i);
+          let tx = {
+            ...baseTx,
+            date: format(instDate, 'yyyy-MM-dd')
+          };
+          if (i > 0) tx.status = 'pending';
+          await add(tx);
+        }
+      } else {
+        // normal variable or income
+        await add(baseTx);
+      }
+    } catch (e) {
+      console.error("Error adding recurring tx:", e);
+    }
+
     setAdding(false);
     setOpenDialog(false);
     setNewTx({ type: activeTab === 'income' ? 'income' : 'expense', category: activeTab === 'income' ? 'Renda' : 'Alimentação', status: 'paid' });

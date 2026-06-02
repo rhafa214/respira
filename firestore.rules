@@ -172,6 +172,14 @@ service cloud.firestore {
       allow delete: if isValidId(wishlistId) && isOwner(existing().userId);
     }
     
+    match /loans/{loanId} {
+      allow get: if isValidId(loanId) && isOwner(existing().userId);
+      allow list: if isVerifiedUser();
+      allow create: if isVerifiedUser();
+      allow update: if isValidId(loanId) && isOwner(existing().userId) && incoming().userId == existing().userId;
+      allow delete: if isValidId(loanId) && isOwner(existing().userId);
+    }
+    
     match /{collection}/{itemId} {
       allow read, write: if collection.matches('^market_items_.*$') && isVerifiedUser();
     }
