@@ -49,6 +49,7 @@ import { useCollection } from "@/hooks/useFirestore";
 import { useAuth } from "@/components/AuthProvider";
 import { SeedDataAlert } from "@/components/SeedDataAlert";
 import { TransactionStack } from "@/components/TransactionStack";
+import { GamificationWidget } from "@/components/GamificationWidget";
 import {
   BarChart,
   Bar,
@@ -861,11 +862,13 @@ export default function DashboardPage() {
         </div>
 
         {/* Right Column (Transactions) */}
-        <div>
+        <div className="space-y-6">
+          <GamificationWidget />
+
           {/* Transações Recentes Simplificado */}
           <div>
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold text-slate-900">Transações</h3>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Transações</h3>
             </div>
             <div className="space-y-3">
               <TransactionStack
