@@ -10,6 +10,7 @@ import {
   Calendar,
   Trash2,
   HandCoins,
+  Pencil,
 } from "lucide-react";
 import { useCollection } from "@/hooks/useFirestore";
 import {
@@ -35,15 +36,39 @@ type Loan = {
 };
 
 export default function LoansPage() {
-  const { data: loans, add, remove, loading } = useCollection<Loan>("loans");
+  const {
+    data: loans,
+    add,
+    remove,
+    update: updateLoan,
+    loading,
+  } = useCollection<Loan>("loans");
   const {
     add: addTx,
     data: allTransactions,
     remove: removeTx,
+    update: updateTx,
   } = useCollection<any>("transactions");
   const [openDialog, setOpenDialog] = useState(false);
-  const [newLoan, setNewLoan] = useState<Partial<Loan>>({});
+  const [newLoan, setNewLoan] = useState<
+    Partial<Loan> & { originalDescription?: string }
+  >({});
   const [adding, setAdding] = useState(false);
+  const [editingLoanId, setEditingLoanId] = useState<string | null>(null);
+
+  const handleEditClick = (loan: any) => {
+    setNewLoan({
+      bank: loan.bank === "Lançamento Manual" ? "" : loan.bank,
+      description: loan.description || "",
+      installmentValue: loan.installmentValue,
+      remainingInstallments: loan.remainingInstallments,
+      totalInstallments: loan.totalInstallments,
+      dueDate: loan.dueDate,
+      originalDescription: loan.description,
+    } as any);
+    setEditingLoanId(loan.id!);
+    setOpenDialog(true);
+  };
 
   const handleAdd = async () => {
     if (
@@ -54,12 +79,59 @@ export default function LoansPage() {
       return;
     setAdding(true);
 
-    // Create the loan
-    const loanId = await add(
-      newLoan as Omit<Loan, "id" | "userId" | "createdAt" | "updatedAt">,
-    );
+    let loanIdToUse = editingLoanId;
 
-    if (loanId && typeof loanId === "string") {
+    if (editingLoanId && editingLoanId.startsWith("manual-")) {
+      // It's a manual loan being converted/edited into a real one
+      const relatedTxs =
+        allTransactions?.filter(
+          (tx: any) =>
+            tx.description === newLoan.originalDescription && !tx.loanId,
+        ) || [];
+      for (const tx of relatedTxs) {
+        if (tx.id) await removeTx(tx.id);
+      }
+      loanIdToUse = null; // force creation of real loan
+    }
+
+    if (loanIdToUse) {
+      // Updating an existing true loan
+      await updateLoan(loanIdToUse, {
+        bank: newLoan.bank,
+        description: newLoan.description || "",
+        installmentValue: newLoan.installmentValue,
+        remainingInstallments: newLoan.remainingInstallments,
+        totalInstallments:
+          newLoan.totalInstallments || newLoan.remainingInstallments,
+        dueDate: newLoan.dueDate || "10",
+      } as any);
+
+      // Remove pending transactions
+      if (allTransactions) {
+        const relatedTxs = allTransactions.filter(
+          (tx: any) => tx.loanId === loanIdToUse && tx.status !== "paid",
+        );
+        for (const tx of relatedTxs) {
+          if (tx.id) await removeTx(tx.id);
+        }
+      }
+    } else {
+      // Create new loan
+      const addedId = await add({
+        bank: newLoan.bank,
+        description: newLoan.description || "",
+        installmentValue: newLoan.installmentValue,
+        remainingInstallments: newLoan.remainingInstallments,
+        totalInstallments:
+          newLoan.totalInstallments || newLoan.remainingInstallments,
+        dueDate: newLoan.dueDate || "10",
+      } as any);
+      if (addedId && typeof addedId === "string") {
+        loanIdToUse = addedId;
+      }
+    }
+
+    if (loanIdToUse && typeof loanIdToUse === "string") {
       const now = new Date();
       const dueDate = newLoan.dueDate ? parseInt(newLoan.dueDate) : 10;
 
@@ -86,7 +158,7 @@ export default function LoansPage() {
           date: format(instDate, "yyyy-MM-dd"),
           status: i === 0 && now.getDate() >= dueDate ? "paid" : "pending",
           installmentInfo: `${currentFixedInstallment + i}/${total}`,
-          loanId: loanId,
+          loanId: loanIdToUse,
         });
       }
     }
@@ -94,6 +166,7 @@ export default function LoansPage() {
     setAdding(false);
     setOpenDialog(false);
     setNewLoan({});
+    setEditingLoanId(null);
   };
 
   const handleDelete = async (
@@ -192,7 +265,16 @@ export default function LoansPage() {
             Controle os empréstimos debitados direto da sua conta.
           </p>
         </div>
-        <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+        <Dialog
+          open={openDialog}
+          onOpenChange={(val) => {
+            setOpenDialog(val);
+            if (!val) {
+              setEditingLoanId(null);
+              setNewLoan({});
+            }
+          }}
+        >
           <DialogTrigger asChild>
             <Button className="gap-2 shrink-0 bg-slate-900 text-white hover:bg-slate-800 rounded-xl h-11">
               <Plus className="w-4 h-4" />
@@ -201,7 +283,9 @@ export default function LoansPage() {
           </DialogTrigger>
           <DialogContent className="rounded-3xl">
             <DialogHeader>
-              <DialogTitle>Cadastrar Empréstimo</DialogTitle>
+              <DialogTitle>
+                {editingLoanId ? "Editar Empréstimo" : "Cadastrar Empréstimo"}
+              </DialogTitle>
               <DialogDescription>
                 Acompanhe o que é debitado direto na sua conta.
               </DialogDescription>
@@ -298,7 +382,11 @@ export default function LoansPage() {
                 }
                 className="w-full rounded-xl bg-slate-900 text-white hover:bg-slate-800"
               >
-                {adding ? "Salvando..." : "Salvar Empréstimo"}
+                {adding
+                  ? "Salvando..."
+                  : editingLoanId
+                    ? "Salvar Alterações"
+                    : "Salvar Empréstimo"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -436,7 +524,15 @@ export default function LoansPage() {
                         </div>
                       </div>
 
-                      <div className="flex justify-end w-full sm:w-auto ml-auto">
+                      <div className="flex flex-col sm:flex-row justify-end w-full sm:w-auto ml-auto gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-slate-400 hover:text-slate-600 hover:bg-slate-50"
+                          onClick={() => handleEditClick(loan)}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
