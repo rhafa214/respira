@@ -30,7 +30,8 @@ export default function LandingPage() {
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 py-4 px-6 md:px-12 flex items-center justify-between bg-white/80 backdrop-blur-md border-b border-slate-100 z-50">
         <div className="flex items-center gap-2">
-          <div className="bg-emerald-500 p-1.5 rounded-lg text-white">
+          <img src="/icon.png" alt="Respira" className="w-8 h-8 rounded-lg object-cover shadow-sm" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling!.classList.remove('hidden'); }} />
+          <div className="bg-emerald-500 p-1.5 rounded-lg text-white hidden">
             <Leaf className="w-5 h-5" />
           </div>
           <span className="font-bold text-xl tracking-tight text-slate-800">Respira</span>

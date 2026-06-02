@@ -32,7 +32,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <aside className="hidden md:flex w-72 flex-col bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 p-6 shadow-sm z-10 transition-colors">
         <div className="flex items-center justify-between px-2 mb-10">
           <div className="flex items-center gap-3">
-             <div className="bg-emerald-500/10 p-2 rounded-xl text-emerald-600">
+             <img src="/icon.png" alt="Respira" className="w-10 h-10 rounded-xl object-cover shadow-sm" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling!.classList.remove('hidden'); }} />
+             <div className="bg-emerald-500/10 p-2 rounded-xl text-emerald-600 hidden">
                <Leaf className="w-6 h-6" />
              </div>
              <span className="font-semibold text-xl tracking-tight text-slate-800 dark:text-slate-100">Respira</span>
@@ -88,7 +89,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Top Header Mobile */}
         <header className="md:hidden flex items-center justify-between p-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-800/50 z-10 transition-colors">
           <div className="flex items-center gap-2">
-            <div className="bg-emerald-500/10 p-1.5 rounded-lg text-emerald-600">
+            <img src="/icon.png" alt="Respira" className="w-8 h-8 rounded-lg object-cover shadow-sm" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling!.classList.remove('hidden'); }} />
+            <div className="bg-emerald-500/10 p-1.5 rounded-lg text-emerald-600 hidden">
               <Leaf className="w-5 h-5" />
             </div>
             <span className="font-semibold text-lg tracking-tight text-slate-800 dark:text-slate-100">Respira</span>

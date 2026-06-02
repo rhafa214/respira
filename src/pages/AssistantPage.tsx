@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { GoogleGenAI, Type, FunctionDeclaration } from "@google/genai";
-import { collection, query, where, getDocs, addDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, addDoc, updateDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
@@ -37,12 +37,12 @@ export default function AssistantPage() {
       const debtsSnap = await getDocs(query(collection(db, "debts"), where("userId", "==", uid)));
       const goalsSnap = await getDocs(query(collection(db, "goals"), where("userId", "==", uid)));
 
-      const transactions = transactionsSnap.docs.map(d => d.data());
+      const transactions = transactionsSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
       const debts = debtsSnap.docs.map(d => d.data());
       const goals = goalsSnap.docs.map(d => d.data());
 
       let contextStr = `Cenário Financeiro do Usuário (seja acolhedor, conciso, como um consultor pessoal expert):\n\n`;
-      contextStr += `Transações recentes (${transactions.length}):\n${transactions.slice(-5).map(t => `- R$ ${t.amount} em ${t.category} (${t.type}) no dia ${t.date}`).join('\n')}\n`;
+      contextStr += `Transações recentes (${transactions.length}):\n${transactions.slice(-15).map(t => `- ID: ${t.id} | Descrição: ${t.description} | R$ ${t.amount} em ${t.category} (${t.type}) dia ${t.date} ${t.installmentInfo ? '| Parcela: '+t.installmentInfo : ''}`).join('\n')}\n`;
       contextStr += `Dívidas ativas:\n${debts.map(d => `- ${d.bank}: Restam R$ ${d.remaining} de R$ ${d.total} (Status: ${d.status})`).join('\n')}\n`;
       contextStr += `Metas:\n${goals.map(g => `- ${g.title}: R$ ${g.current} de R$ ${g.target}`).join('\n')}\n`;
 
@@ -59,9 +59,26 @@ export default function AssistantPage() {
             category: { type: Type.STRING, description: "A categoria (ex: 'Mercado', 'Gasolina', 'Salário', 'Lazer')." },
             type: { type: Type.STRING, description: "'expense' para gastos ou 'income' para ganhos." },
             date: { type: Type.STRING, description: "A data no formato 'YYYY-MM-DDT12:00:00Z'. Tente deduzir a data correta para 'hoje'." },
-            description: { type: Type.STRING, description: "Descrição opcional." }
+            description: { type: Type.STRING, description: "Descrição opcional." },
+            installmentInfo: { type: Type.STRING, description: "Informação sobre parcelas correspondentes ao mês dessa mesma transação, ex: '8/36'" }
           },
           required: ["amount", "category", "type", "date"]
+        }
+      };
+
+      const updateTransactionDeclaration: FunctionDeclaration = {
+        name: "updateTransaction",
+        description: "Atualiza uma transação existente baseada no seu ID.",
+        parameters: {
+          type: Type.OBJECT,
+          properties: {
+            transactionId: { type: Type.STRING, description: "O ID da transação a ser atualizada (você deve procurar o ID na lista de Transações recentes)." },
+            amount: { type: Type.NUMBER, description: "O novo valor da transação, se houver alteração." },
+            category: { type: Type.STRING, description: "A nova categoria." },
+            description: { type: Type.STRING, description: "A nova descrição." },
+            installmentInfo: { type: Type.STRING, description: "A nova informação de parcela ex: '8/36'." }
+          },
+          required: ["transactionId"]
         }
       };
 
@@ -69,9 +86,9 @@ export default function AssistantPage() {
         model: "gemini-3.1-pro-preview",
         contents: promptContext,
         config: {
-          systemInstruction: "Você é o 'Consultor IA', especialista financeiro. Você pode responder perguntas e também ajudar o usuário a registrar transações. Se o usuário disser que gastou com algo, chame a função addTransaction para registrar. 1) O usuário possui alta pressão financeira. 2) CUIDADO COM A CULPA: Evite culpa excessiva. 3) Seja conciso e direto. 4) Use as funções quando apropriado, e depois forneça uma breve confirmação ou encorajamento. Hoje é: " + new Date().toISOString(),
+          systemInstruction: "Você é o 'Consultor IA', especialista financeiro. Você pode responder perguntas e ajudar o usuário a registrar ou atualizar transações com as funções fornecidas. Se ele pedir para atualizar ou editar algo, localize o ID na lista e use updateTransaction. Não mencione o ID textualmente na resposta, apenas diga que alterou de forma amigável e qual foi a alteração.",
           temperature: 0.7,
-          tools: [{ functionDeclarations: [addTransactionDeclaration] }]
+          tools: [{ functionDeclarations: [addTransactionDeclaration, updateTransactionDeclaration] }]
         }
       });
       
@@ -80,6 +97,7 @@ export default function AssistantPage() {
       const functionCalls = aiResponse.functionCalls;
       if (functionCalls && functionCalls.length > 0) {
         let addedCount = 0;
+        let updatedCount = 0;
         for (const call of functionCalls) {
           if (call.name === 'addTransaction') {
             const args = call.args as any;
@@ -90,21 +108,36 @@ export default function AssistantPage() {
                 type: args.type,
                 date: args.date,
                 description: args.description || "",
+                installmentInfo: args.installmentInfo,
                 userId: uid,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
               });
               addedCount++;
             } catch (err) {
-              console.error("Falha ao adicionar transação:", err);
+              console.error("Falha ao adicionar:", err);
             }
+          }
+          if (call.name === 'updateTransaction') {
+             const args = call.args as any;
+             try {
+               const updateData: any = { updatedAt: new Date().toISOString() };
+               if (args.amount !== undefined) updateData.amount = args.amount;
+               if (args.category !== undefined) updateData.category = args.category;
+               if (args.description !== undefined) updateData.description = args.description;
+               if (args.installmentInfo !== undefined) updateData.installmentInfo = args.installmentInfo;
+               
+               await updateDoc(doc(db, "transactions", args.transactionId), updateData);
+               updatedCount++;
+             } catch (err) {
+               console.error("Falha ao atualizar:", err);
+             }
           }
         }
         
-        if (addedCount > 0 && !finalMessage) {
-           finalMessage = `Pronto! Registrei ${addedCount > 1 ? 'as transações' : 'a transação'} pra você. Tudo certo.`;
-        } else if (addedCount > 0 && finalMessage) {
-           // We keep the original generated message
+        if (!finalMessage) {
+           if (addedCount > 0) finalMessage = `Pronto! Registrei ${addedCount > 1 ? 'as transações' : 'a transação'} pra você. Tudo certo.`;
+           if (updatedCount > 0) finalMessage = finalMessage ? finalMessage + ` Ah, e atualizei ${updatedCount > 1 ? 'as informações que você pediu' : 'a informação que você pediu'} também.` : `Pronto! Atualizei a transação pra você.`;
         }
       }
 
