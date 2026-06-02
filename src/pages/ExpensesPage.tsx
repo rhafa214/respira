@@ -82,7 +82,9 @@ export default function ExpensesPage() {
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const incomes = transactionsThisMonth.filter((t) => t.type === "income");
-  const expenses = transactionsThisMonth.filter((t) => t.type === "expense");
+  const expenses = transactionsThisMonth.filter(
+    (t) => t.type === "expense" || t.type === "deduction",
+  );
 
   const variableExpenses = expenses.filter(
     (t) =>
@@ -90,7 +92,8 @@ export default function ExpensesPage() {
       !t.isRecurring &&
       !t.installmentInfo &&
       !(t.description && t.description.toLowerCase().includes("empréstimo")) &&
-      !(t.description && t.description.toLowerCase().includes("emprestimo")),
+      !(t.description && t.description.toLowerCase().includes("emprestimo")) &&
+      t.type !== "deduction",
   );
   const fixedExpenses = expenses.filter(
     (t) =>
@@ -98,7 +101,8 @@ export default function ExpensesPage() {
       t.isRecurring ||
       !!t.installmentInfo ||
       (t.description && t.description.toLowerCase().includes("empréstimo")) ||
-      (t.description && t.description.toLowerCase().includes("emprestimo")),
+      (t.description && t.description.toLowerCase().includes("emprestimo")) ||
+      t.type === "deduction",
   );
 
   const displayedTransactions =

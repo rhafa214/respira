@@ -128,7 +128,7 @@ export default function LoansPage() {
   const manualLoansTxs =
     allTransactions?.filter(
       (tx: any) =>
-        tx.type === "expense" &&
+        (tx.type === "expense" || tx.type === "deduction") &&
         !tx.loanId &&
         ((tx.description &&
           tx.description.toLowerCase().includes("empréstimo")) ||
