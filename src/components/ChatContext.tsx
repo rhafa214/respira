@@ -54,7 +54,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       contextStr += `Dívidas ativas:\n${JSON.stringify(debts)}\n`;
       contextStr += `Lista de Desejos (itens que o usuário quer comprar):\n${JSON.stringify(wishlist)}\n`;
 
-      const apiKey = process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
+      const apiKey = process.env.GEMINI_API_KEY || (import.meta as any).env.VITE_GEMINI_API_KEY;
       if (!apiKey) {
         setMessages(prev => [...prev, { 
           role: "model", 

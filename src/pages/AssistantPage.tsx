@@ -100,7 +100,7 @@ export default function AssistantPage() {
       contextStr += `Metas:\n${goals.map(g => `- ${g.title}: R$ ${g.current} de R$ ${g.target}`).join('\n')}\n`;
       contextStr += `Lista de Mercado (Mês ${currentMonthStr}): ${marketBudget ? `(Orçamento Mensal Mercado: R$ ${marketBudget})` : ''}\n${marketItems.map(m => `- ID: ${m.id} | ${m.name} | Previsto: R$ ${m.estimatedPrice} | Gasto: R$ ${m.actualPrice} | Comprado: ${m.purchased ? 'Sim' : 'Não'}`).join('\n')}\n`;
 
-      const apiKey = process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
+      const apiKey = process.env.GEMINI_API_KEY || (import.meta as any).env.VITE_GEMINI_API_KEY;
       if (!apiKey) {
         setMessages(prev => [...prev, { 
           role: "model", 

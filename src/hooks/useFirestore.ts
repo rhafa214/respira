@@ -31,7 +31,16 @@ export function useDoc<T>(collectionName: string, id: string) {
     if (!user) return;
     try {
        const docRef = doc(db, collectionName, id);
-       await setDoc(docRef, { ...updates, userId: user.uid }, { merge: true });
+       const payload: any = { ...updates, userId: user.uid };
+       
+       // Strip undefined values from payload
+       Object.keys(payload).forEach(key => {
+         if (payload[key] === undefined) {
+           delete payload[key];
+         }
+       });
+
+       await setDoc(docRef, payload, { merge: true });
     } catch (err) {
        handleFirestoreError(err, OperationType.UPDATE, `${collectionName}/${id}`);
     }
@@ -124,6 +133,13 @@ export function useCollection<T>(collectionName: string) {
          payload.createdAt = now;
       }
 
+      // Strip undefined values from payload
+      Object.keys(payload).forEach(key => {
+        if (payload[key] === undefined) {
+          delete payload[key];
+        }
+      });
+
       const docRef = await addDoc(collection(db, collectionName), payload);
       return docRef.id;
     } catch (error) {
@@ -138,6 +154,14 @@ export function useCollection<T>(collectionName: string) {
       if (collectionName === 'debts' || collectionName === 'goals') {
         payload.updatedAt = new Date().toISOString();
       }
+
+      // Strip undefined values from payload
+      Object.keys(payload).forEach(key => {
+        if (payload[key] === undefined) {
+          delete payload[key];
+        }
+      });
+
       await updateDoc(docRef, payload);
     } catch (error) {
        handleFirestoreError(error, OperationType.UPDATE, `${collectionName}/${id}`);
