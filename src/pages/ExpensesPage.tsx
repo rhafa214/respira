@@ -24,6 +24,7 @@ import {
   CalendarDays,
   CheckCircle2,
   Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import { useCollection } from "@/hooks/useFirestore";
 import {
@@ -69,9 +70,9 @@ export default function ExpensesPage() {
     loading,
   } = useCollection<Transaction>("transactions");
 
-  const [activeTab, setActiveTab] = useState<"fixed" | "variable" | "income">(
-    "variable",
-  );
+  const [activeTab, setActiveTab] = useState<
+    "fixed" | "variable" | "income" | "overdue"
+  >("variable");
 
   const monthStr = format(currentDate, "yyyy-MM");
   const monthName = format(currentDate, "MMMM yyyy", { locale: ptBR });
@@ -99,6 +100,8 @@ export default function ExpensesPage() {
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   );
 
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+
   const incomes = transactionsThisMonth.filter((t) => t.type === "income");
   const expenses = transactionsThisMonth.filter(
     (t) => t.type === "expense" || t.type === "deduction",
@@ -111,24 +114,37 @@ export default function ExpensesPage() {
       !t.installmentInfo &&
       !(t.description && t.description.toLowerCase().includes("empréstimo")) &&
       !(t.description && t.description.toLowerCase().includes("emprestimo")) &&
-      t.type !== "deduction",
+      t.type !== "deduction" &&
+      !(t.status === "pending" && t.date < todayStr),
   );
   const fixedExpenses = expenses.filter(
     (t) =>
-      t.isFixed ||
-      t.isRecurring ||
-      !!t.installmentInfo ||
-      (t.description && t.description.toLowerCase().includes("empréstimo")) ||
-      (t.description && t.description.toLowerCase().includes("emprestimo")) ||
-      t.type === "deduction",
+      (t.isFixed ||
+        t.isRecurring ||
+        !!t.installmentInfo ||
+        (t.description && t.description.toLowerCase().includes("empréstimo")) ||
+        (t.description && t.description.toLowerCase().includes("emprestimo")) ||
+        t.type === "deduction") &&
+      !(t.status === "pending" && t.date < todayStr),
   );
+
+  const overdueExpenses = allTransactions
+    .filter(
+      (t) =>
+        (t.type === "expense" || t.type === "deduction") &&
+        t.status === "pending" &&
+        t.date < todayStr,
+    )
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const displayedTransactions =
     activeTab === "variable"
       ? variableExpenses
       : activeTab === "fixed"
         ? fixedExpenses
-        : incomes;
+        : activeTab === "overdue"
+          ? overdueExpenses
+          : incomes;
   const totalVariable = variableExpenses.reduce(
     (acc, t) => acc + Number(t.amount || 0),
     0,
@@ -138,6 +154,10 @@ export default function ExpensesPage() {
     0,
   );
   const totalIncome = incomes.reduce(
+    (acc, t) => acc + Number(t.amount || 0),
+    0,
+  );
+  const totalOverdue = overdueExpenses.reduce(
     (acc, t) => acc + Number(t.amount || 0),
     0,
   );
@@ -436,7 +456,42 @@ export default function ExpensesPage() {
         >
           Variáveis
         </button>
+        <button
+          onClick={() => {
+            setActiveTab("overdue");
+            setNewTx({ ...newTx, type: "expense" });
+          }}
+          className={`flex-1 py-2.5 px-4 text-sm font-semibold rounded-full transition-all flex items-center justify-center gap-2 ${activeTab === "overdue" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"} ${overdueExpenses.length > 0 ? "relative" : ""}`}
+        >
+          Atrasadas
+          {overdueExpenses.length > 0 && (
+            <span className="w-2 h-2 rounded-full bg-rose-500 absolute top-2 right-2 sm:static"></span>
+          )}
+        </button>
       </div>
+
+      {activeTab === "overdue" && (
+        <div className="bg-rose-50 border border-rose-100/50 p-4 rounded-3xl relative overflow-hidden flex items-start gap-3">
+          <div className="bg-rose-500 p-2.5 rounded-xl text-white shrink-0 flex items-center justify-center">
+            <AlertTriangle className="w-5 h-5 stroke-[2]" />
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-800">Contas Atrasadas</h3>
+            <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
+              Aqui estão listadas todas as contas que constam como não pagas e
+              passaram da data de vencimento.
+            </p>
+          </div>
+          <div className="ml-auto text-right">
+            <p className="text-xs uppercase tracking-widest font-bold text-slate-400 mb-0.5">
+              Total Atrasado
+            </p>
+            <p className="text-xl font-bold text-rose-600">
+              {formatCurrency(totalOverdue)}
+            </p>
+          </div>
+        </div>
+      )}
 
       {activeTab === "variable" && (
         <div className="bg-[#fef6ee] border border-orange-100/50 p-4 rounded-3xl relative overflow-hidden flex items-start gap-3">
