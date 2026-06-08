@@ -36,7 +36,7 @@ service cloud.firestore {
 
     function isValidTransactionCreate(data) {
       return data.keys().hasAll(['userId', 'amount', 'type', 'date'])
-        && data.keys().size() <= 15
+        && data.keys().size() <= 16
         && data.amount is number
         && data.type is string && data.type.size() <= 20
         && data.date is string && data.date.size() <= 30
@@ -47,6 +47,7 @@ service cloud.firestore {
         && data.get('isFixed', false) is bool
         && data.get('loanId', '') is string
         && data.get('installmentInfo', '') is string && data.get('installmentInfo', '').size() <= 50
+        && data.get('originalFixedAmount', 0) is number
         && data.get('createdAt', '') is string;
     }
 
@@ -61,7 +62,8 @@ service cloud.firestore {
         && inc.get('isRecurring', false) is bool
         && inc.get('isFixed', false) is bool
         && inc.get('loanId', '') is string
-        && inc.get('installmentInfo', '') is string && inc.get('installmentInfo', '').size() <= 50;
+        && inc.get('installmentInfo', '') is string && inc.get('installmentInfo', '').size() <= 50
+        && inc.get('originalFixedAmount', 0) is number;
     }
 
     function isValidDebtCreate(data) {
@@ -124,7 +126,7 @@ service cloud.firestore {
       allow get: if isValidId(transactionId) && isOwner(existing().userId);
       allow list: if isVerifiedUser();
       allow create: if isVerifiedUser() && isValidTransactionCreate(incoming());
-      allow update: if isValidId(transactionId) && isOwner(existing().userId) && isValidTransactionUpdate(incoming(), existing()) && incoming().diff(existing()).affectedKeys().hasOnly(['amount', 'category', 'date', 'type', 'description', 'status', 'isRecurring', 'isFixed', 'loanId', 'installmentInfo', 'updatedAt']);
+      allow update: if isValidId(transactionId) && isOwner(existing().userId) && isValidTransactionUpdate(incoming(), existing()) && incoming().diff(existing()).affectedKeys().hasOnly(['amount', 'category', 'date', 'type', 'description', 'status', 'isRecurring', 'isFixed', 'loanId', 'installmentInfo', 'updatedAt', 'originalFixedAmount']);
       allow delete: if isValidId(transactionId) && isOwner(existing().userId);
     }
     

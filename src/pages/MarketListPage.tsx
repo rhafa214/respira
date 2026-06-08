@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/components/AuthProvider";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, updateDoc, doc, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 type MarketItem = {
@@ -95,6 +95,58 @@ export default function MarketListPage() {
   );
 
   const isOverBudget = budget > 0 && predictedTotal > budget;
+
+  const isMarketComplete = items.length > 0 && items.every((item) => item.purchased);
+  const [syncing, setSyncing] = useState(false);
+
+  const handleSyncToExpenses = async () => {
+    if (!user || syncing || totalActual <= 0) return;
+    setSyncing(true);
+    
+    try {
+      const q = query(
+        collection(db, "transactions"),
+        where("userId", "==", user.uid),
+      );
+      
+      const snap = await getDocs(q);
+      const allTx = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      
+      const monthTx = allTx.filter((t: any) => 
+        t.date && 
+        t.date.substring(0, 7) === currentMonthStr && 
+        (t.type === "expense" || t.type === "deduction") && 
+        (t.description.toLowerCase().includes("compra mensal") || t.description.toLowerCase().includes("mercado") || t.description.toLowerCase().includes("supermercado"))
+      );
+      
+      if (monthTx.length > 0) {
+         const txToUpdate = monthTx[0];
+         await updateDoc(doc(db, "transactions", txToUpdate.id as string), {
+           amount: totalActual,
+           status: "paid"
+         });
+         alert(`Valor de ${formatCurrency(totalActual)} sincronizado na despesa existente de mercado!`);
+      } else {
+        await addDoc(collection(db, "transactions"), {
+          userId: user.uid,
+          description: "Compra Mensal",
+          amount: totalActual,
+          type: "expense",
+          date: new Date().toISOString().split("T")[0], // current date
+          status: "paid",
+          isFixed: true, 
+          isRecurring: false,
+          category: "food"
+        });
+        alert(`Foi criada uma nova despesa fixa de mercado com o valor total de ${formatCurrency(totalActual)}.`);
+      }
+      
+    } catch(err) {
+      console.error(err);
+      alert("Erro ao sincronizar com despesas.");
+    }
+    setSyncing(false);
+  }
 
   const handleAddItem = async () => {
     if (!newItem.name) return;
@@ -269,6 +321,25 @@ export default function MarketListPage() {
               Aviso: Sua previsão de compras ultrapassou o orçamento em{" "}
               <strong>{formatCurrency(predictedTotal - budget)}</strong>.
             </p>
+          </div>
+        )}
+
+        {isMarketComplete && (
+          <div className="bg-emerald-500/20 border border-emerald-500/50 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3 text-emerald-100">
+              <CheckCircle2 className="w-6 h-6 shrink-0 text-emerald-400" />
+              <div>
+                <p className="font-bold text-white">Lista de compras concluída!</p>
+                <p className="text-sm">Todos os itens foram comprados. Você pode sincronizar este valor com suas despesas deste mês.</p>
+              </div>
+            </div>
+            <Button
+              onClick={handleSyncToExpenses}
+              disabled={syncing || totalActual <= 0}
+              className="bg-emerald-500 hover:bg-emerald-600 text-white w-full sm:w-auto font-bold rounded-xl whitespace-nowrap"
+            >
+              {syncing ? "Sincronizando..." : `Sincronizar ${formatCurrency(totalActual)}`}
+            </Button>
           </div>
         )}
       </div>
