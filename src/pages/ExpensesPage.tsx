@@ -77,9 +77,27 @@ export default function ExpensesPage() {
   const monthName = format(currentDate, "MMMM yyyy", { locale: ptBR });
 
   // Filter by selected month from context
-  const transactionsThisMonth = allTransactions
-    .filter((t) => t.date && t.date.substring(0, 7) === monthStr)
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const currentMonthTxs = allTransactions.filter(
+    (t) => t.date && t.date.substring(0, 7) === monthStr,
+  );
+
+  const pastOverdueBills = allTransactions.filter(
+    (t) =>
+      (t.type === "expense" || t.type === "deduction") &&
+      t.status !== "paid" &&
+      t.date.substring(0, 7) < monthStr,
+  );
+
+  const mergedTxs = [...currentMonthTxs];
+  for (const overdue of pastOverdueBills) {
+    if (!mergedTxs.find((tx) => tx.id === overdue.id)) {
+      mergedTxs.push(overdue);
+    }
+  }
+
+  const transactionsThisMonth = mergedTxs.sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+  );
 
   const incomes = transactionsThisMonth.filter((t) => t.type === "income");
   const expenses = transactionsThisMonth.filter(
@@ -518,8 +536,22 @@ export default function ExpensesPage() {
                         )}
                       </span>
                       {tx.status === "pending" ? (
-                        <span className="flex items-center gap-1 text-[11px] font-semibold text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded-md">
-                          Pendente
+                        <span
+                          className={`flex items-center gap-1 text-[11px] font-semibold px-1.5 py-0.5 rounded-md ${
+                            new Date(tx.date + "T12:00:00").getMonth() <
+                              new Date().getMonth() ||
+                            new Date(tx.date + "T12:00:00").getFullYear() <
+                              new Date().getFullYear()
+                              ? "text-rose-600 bg-rose-50"
+                              : "text-orange-500 bg-orange-50"
+                          }`}
+                        >
+                          {new Date(tx.date + "T12:00:00").getMonth() <
+                            new Date().getMonth() ||
+                          new Date(tx.date + "T12:00:00").getFullYear() <
+                            new Date().getFullYear()
+                            ? `Atrasada de ${new Date(tx.date + "T12:00:00").toLocaleDateString("pt-BR", { month: "short" })}`
+                            : "Pendente"}
                         </span>
                       ) : (
                         <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md">

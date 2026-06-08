@@ -277,9 +277,17 @@ export default function AssistantPage() {
               type: Type.STRING,
               description: "O nome do item (ex: Arroz 5kg)",
             },
+            quantity: {
+              type: Type.NUMBER,
+              description: "A quantidade (ex: 2 ou 1.5)",
+            },
+            unit: {
+              type: Type.STRING,
+              description: "A unidade de medida (ex: un, kg, g, L)",
+            },
             estimatedPrice: {
               type: Type.NUMBER,
-              description: "O preço estimado do item, se houver",
+              description: "O preço estimado por unidade do item, se houver",
             },
           },
           required: ["name"],
@@ -297,9 +305,25 @@ export default function AssistantPage() {
               type: Type.STRING,
               description: "O ID do item de mercado",
             },
+            name: {
+              type: Type.STRING,
+              description: "Novo nome do produto",
+            },
+            quantity: {
+              type: Type.NUMBER,
+              description: "Nova quantidade (ex: 2 ou 1.5)",
+            },
+            unit: {
+              type: Type.STRING,
+              description: "Nova unidade (ex: un, kg, g, L)",
+            },
+            estimatedPrice: {
+              type: Type.NUMBER,
+              description: "Novo valor unitário estimado",
+            },
             actualPrice: {
               type: Type.NUMBER,
-              description: "O preço realmente pago ao colocar no carrinho",
+              description: "O preço unitário pago ao colocar no carrinho",
             },
             purchased: {
               type: Type.BOOLEAN,
@@ -397,6 +421,8 @@ export default function AssistantPage() {
             try {
               await addDoc(collection(db, `market_items_${currentMonthStr}`), {
                 name: args.name,
+                quantity: args.quantity || 1,
+                unit: args.unit || "un",
                 estimatedPrice: args.estimatedPrice || 0,
                 actualPrice: 0,
                 purchased: false,
@@ -412,6 +438,12 @@ export default function AssistantPage() {
             const args = call.args as any;
             try {
               const updateData: any = {};
+              if (args.name) updateData.name = args.name;
+              if (args.quantity !== undefined)
+                updateData.quantity = args.quantity;
+              if (args.unit) updateData.unit = args.unit;
+              if (args.estimatedPrice !== undefined)
+                updateData.estimatedPrice = args.estimatedPrice;
               if (args.actualPrice !== undefined)
                 updateData.actualPrice = args.actualPrice;
               if (args.purchased !== undefined)

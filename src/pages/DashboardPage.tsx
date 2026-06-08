@@ -682,45 +682,44 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 auto-rows-min">
         {/* Saldo Atual Pill */}
         <div
-          className={`col-span-1 md:col-span-2 ${realBalance >= 0 ? "bg-emerald-50 border-emerald-100 dark:bg-emerald-500/10 dark:border-emerald-500/20" : "bg-rose-50 border-rose-100 dark:bg-rose-500/10 dark:border-rose-500/20"} border rounded-[2rem] px-6 py-6 flex flex-col justify-center relative overflow-hidden transition-all duration-300 hover:scale-[1.01] hover:shadow-sm cursor-default`}
+          className={`col-span-1 md:col-span-2 ${realBalance >= 0 ? "bg-slate-900 border-slate-800 dark:bg-slate-800 dark:border-slate-700" : "bg-rose-50 border-rose-100 dark:bg-rose-500/10 dark:border-rose-500/20"} border rounded-[2rem] px-6 py-6 flex flex-col justify-center relative overflow-hidden transition-all duration-300 hover:scale-[1.01] hover:shadow-sm cursor-default group`}
         >
-          <div className="flex items-center gap-4 mb-4">
+          {realBalance >= 0 && (
+            <div className="absolute right-0 top-0 -mt-8 -mr-8 w-32 h-32 bg-emerald-500/20 dark:bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/30 transition-all duration-500" />
+          )}
+          <div className="flex items-center gap-4 mb-4 relative z-10">
             <div
-              className={`w-12 h-12 rounded-full ${realBalance >= 0 ? "bg-emerald-500 dark:bg-emerald-600" : "bg-rose-500 dark:bg-rose-600"} text-white flex items-center justify-center shrink-0 shadow-sm transition-colors z-10`}
+              className={`w-12 h-12 rounded-full ${realBalance >= 0 ? "bg-emerald-500 dark:bg-emerald-600" : "bg-rose-500 dark:bg-rose-600"} text-white flex items-center justify-center shrink-0 shadow-sm transition-colors`}
             >
-              {realBalance >= 0 ? (
-                <ArrowUpRight className="w-6 h-6" />
-              ) : (
-                <ArrowDownRight className="w-6 h-6" />
-              )}
+              <Wallet className="w-6 h-6" />
             </div>
             <div
-              className={`ml-auto ${realBalance >= 0 ? "text-emerald-700 bg-emerald-100 dark:bg-emerald-900/50 dark:text-emerald-300" : "text-rose-700 bg-rose-100 dark:bg-rose-900/50 dark:text-rose-300"} px-3 py-1 text-xs font-bold rounded-full uppercase tracking-widest z-10 transition-colors`}
+              className={`ml-auto ${realBalance >= 0 ? "text-slate-300 bg-slate-800 dark:bg-slate-900 dark:text-slate-400 border border-slate-700" : "text-rose-700 bg-rose-100 dark:bg-rose-900/50 dark:text-rose-300"} px-3 py-1 text-xs font-bold rounded-full uppercase tracking-widest transition-colors`}
             >
-              Saldo
+              Saldo em Conta
             </div>
           </div>
-          <p className="text-3xl lg:text-4xl font-bold tracking-tight text-slate-800 dark:text-slate-50 z-10">
+          <p className={`text-3xl lg:text-4xl font-bold tracking-tight ${realBalance >= 0 ? "text-white" : "text-slate-800 dark:text-slate-50"} relative z-10`}>
             {formatCurrency(realBalance)}
           </p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1 z-10">
-            Estimativa livre fim do mês:{" "}
-            <span className="font-bold">{formatCurrency(expectedEndMonthBalance)}</span>
+          <p className={`text-xs ${realBalance >= 0 ? "text-slate-400" : "text-slate-500 dark:text-slate-400"} font-medium mt-1 relative z-10`}>
+            Estimativa livre ao final do mês:{" "}
+            <span className={`font-bold ${realBalance >= 0 ? "text-emerald-400" : "text-slate-700 dark:text-slate-300"}`}>{formatCurrency(expectedEndMonthBalance)}</span>
           </p>
         </div>
 
         {/* Entradas */}
-        <div className="col-span-1 bg-[#f8f5ff] dark:bg-violet-900/20 border border-violet-100 dark:border-violet-800/30 rounded-[2rem] p-6 relative overflow-hidden group hover:shadow-md transition-all duration-300 hover:scale-[1.01] cursor-default">
+        <div className="col-span-1 bg-[#f0fdf4] dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/30 rounded-[2rem] p-6 relative overflow-hidden group hover:shadow-md transition-all duration-300 hover:scale-[1.01] cursor-default">
           <div className="flex justify-between items-start mb-4">
             <div className="flex items-center gap-3">
-              <div className="bg-violet-100 dark:bg-violet-800/50 p-3 rounded-2xl text-violet-600 dark:text-violet-300 shadow-sm">
+              <div className="bg-emerald-100 dark:bg-emerald-800/50 p-3 rounded-2xl text-emerald-600 dark:text-emerald-300 shadow-sm">
                 <TrendingUp className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-violet-600 dark:text-violet-400">
+                <p className="text-xs font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
                   Entradas
                 </p>
-                <div className="flex items-center gap-1.5 text-violet-400 dark:text-violet-500/80 text-sm font-medium mt-0.5">
+                <div className="flex items-center gap-1.5 text-emerald-400 dark:text-emerald-500/80 text-sm font-medium mt-0.5">
                   {monthYearString} <Calendar className="w-3.5 h-3.5" />
                 </div>
               </div>
@@ -728,31 +727,32 @@ export default function DashboardPage() {
           </div>
 
           <div className="mt-2">
-            <p className="text-2xl font-bold tracking-tight text-violet-950 dark:text-violet-100 truncate">
+            <p className="text-2xl font-bold tracking-tight text-emerald-950 dark:text-emerald-100 truncate">
               {formatCurrency(grossIncome)}
             </p>
           </div>
         </div>
 
         {/* Gastos */}
-        <div className="col-span-1 bg-[#f0fdf4] dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/30 rounded-[2rem] p-6 relative overflow-hidden group hover:shadow-md transition-all duration-300 hover:scale-[1.01] flex flex-col justify-between cursor-default">
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-1/2 bg-emerald-400 dark:bg-emerald-500 rounded-r-lg opacity-80" />
-          <div className="flex justify-between items-start pl-2 mb-4">
-            <div className="flex items-center gap-3 text-emerald-500 dark:text-emerald-400">
-              <ReceiptText className="w-7 h-7" />
+        <div className="col-span-1 bg-[#fff5f5] dark:bg-rose-900/10 border border-rose-100 dark:border-rose-800/30 rounded-[2rem] p-6 relative overflow-hidden group hover:shadow-md transition-all duration-300 hover:scale-[1.01] flex flex-col justify-between cursor-default">
+          <div className="flex justify-between items-start mb-4">
+            <div className="flex items-center gap-3">
+              <div className="bg-rose-100 dark:bg-rose-800/50 p-3 rounded-2xl text-rose-500 dark:text-rose-400 shadow-sm">
+                <ReceiptText className="w-6 h-6" />
+              </div>
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+                <p className="text-xs font-bold uppercase tracking-widest text-rose-600 dark:text-rose-400">
                   Gastos
                 </p>
-                <div className="flex items-center gap-1.5 text-emerald-400 dark:text-emerald-500/80 text-sm font-medium mt-0.5">
+                <div className="flex items-center gap-1.5 text-rose-400 dark:text-rose-500/80 text-sm font-medium mt-0.5">
                   Neste mês <Calendar className="w-3.5 h-3.5" />
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="pl-2 mt-2">
-            <p className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">
+          <div className="mt-2">
+            <p className="text-2xl font-bold tracking-tight text-rose-950 dark:text-rose-100 truncate">
               {formatCurrency(totalExpense)}
             </p>
           </div>
@@ -778,11 +778,13 @@ export default function DashboardPage() {
           <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[1.5rem] shadow-sm overflow-hidden h-full flex flex-col">
             <CardContent className="p-0 flex-1 flex flex-col">
               <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-start gap-4 flex-1">
-                <div className="bg-emerald-50 dark:bg-emerald-500/10 p-3 rounded-2xl text-emerald-600 dark:text-emerald-400 shrink-0">
-                  <Target className="w-6 h-6" />
+                <div className="bg-indigo-50 dark:bg-indigo-500/10 p-3 rounded-2xl text-indigo-600 dark:text-indigo-400 shrink-0">
+                  <Sparkles className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className="font-bold text-slate-800 dark:text-slate-100">IA Financeira: Progresso do Mês</p>
+                  <p className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                    IA Financeira: Análise do Mês
+                  </p>
                   <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
                     {aiInsights()}
                   </p>
@@ -856,27 +858,31 @@ export default function DashboardPage() {
         {/* Dívidas Consolidadas */}
         <div className="col-span-1 md:col-span-2 lg:col-span-2">
           <Card
-            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[1.5rem] shadow-sm cursor-pointer hover:shadow-md transition-shadow overflow-hidden"
+            className="bg-zinc-900 border-zinc-800 dark:bg-black dark:border-zinc-900 rounded-[1.5rem] shadow-md cursor-pointer hover:shadow-lg hover:scale-[1.01] transition-all duration-300 overflow-hidden relative group"
             onClick={() => navigate("/app/dividas")}
           >
-            <CardContent className="p-5 flex items-center justify-between">
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-48 h-48 bg-rose-500/10 rounded-full blur-3xl group-hover:bg-rose-500/20 transition-all duration-500 pointer-events-none" />
+            <CardContent className="p-5 flex items-center justify-between relative z-10">
               <div className="flex items-center gap-4">
-                <div className="bg-rose-50 dark:bg-rose-500/10 p-3 rounded-2xl text-rose-600 dark:text-rose-400 shrink-0">
+                <div className="bg-rose-500/20 p-3 rounded-2xl text-rose-400 shrink-0 border border-rose-500/20">
                   <ShieldAlert className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className="font-bold text-slate-800 dark:text-slate-100">
+                  <p className="font-bold text-zinc-100 flex items-center gap-2">
                     Endividamento Total
                   </p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                  <p className="text-sm text-zinc-400">
                     {debts?.length || 0} contas sob gestão
                   </p>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-xl font-bold tracking-tight text-rose-600 dark:text-rose-400">
+                <p className="text-xl font-bold tracking-tight text-white">
                   {formatCurrency(totalDebts)}
                 </p>
+                <div className="inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full mt-1">
+                  Ver Plano de Quitação
+                </div>
               </div>
             </CardContent>
           </Card>

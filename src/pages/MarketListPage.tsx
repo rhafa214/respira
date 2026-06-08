@@ -30,6 +30,8 @@ import { db } from "@/lib/firebase";
 type MarketItem = {
   id?: string;
   name: string;
+  quantity?: number;
+  unit?: string;
   estimatedPrice: number;
   actualPrice: number;
   purchased: boolean;
@@ -56,7 +58,9 @@ export default function MarketListPage() {
   const [newItem, setNewItem] = useState<{
     name: string;
     estimatedPrice: number;
-  }>({ name: "", estimatedPrice: 0 });
+    quantity: number;
+    unit: string;
+  }>({ name: "", estimatedPrice: 0, quantity: 1, unit: "un" });
 
   const [openEdit, setOpenEdit] = useState(false);
   const [editingItem, setEditingItem] = useState<MarketItem | null>(null);
@@ -68,11 +72,15 @@ export default function MarketListPage() {
 
   const budget = budgetData?.amount || 0;
   const totalEstimated = items.reduce(
-    (acc, item) => acc + (Number(item.estimatedPrice) || 0),
+    (acc, item) =>
+      acc + (Number(item.estimatedPrice) || 0) * (Number(item.quantity) || 1),
     0,
   );
   const totalActual = items.reduce(
-    (acc, item) => acc + (Number(item.purchased ? item.actualPrice : 0) || 0),
+    (acc, item) =>
+      acc +
+      (Number(item.purchased ? item.actualPrice : 0) || 0) *
+        (Number(item.quantity) || 1),
     0,
   );
 
@@ -81,8 +89,8 @@ export default function MarketListPage() {
     (acc, item) =>
       acc +
       (item.purchased
-        ? Number(item.actualPrice || 0)
-        : Number(item.estimatedPrice || 0)),
+        ? Number(item.actualPrice || 0) * (Number(item.quantity) || 1)
+        : Number(item.estimatedPrice || 0) * (Number(item.quantity) || 1)),
     0,
   );
 
@@ -91,7 +99,7 @@ export default function MarketListPage() {
   const handleAddItem = async () => {
     if (!newItem.name) return;
     await add({ ...newItem, actualPrice: 0, purchased: false });
-    setNewItem({ name: "", estimatedPrice: 0 });
+    setNewItem({ name: "", estimatedPrice: 0, quantity: 1, unit: "un" });
     setOpenAdd(false);
   };
 
@@ -154,6 +162,8 @@ export default function MarketListPage() {
         ) {
           await add({
             name: pItem.name,
+            quantity: pItem.quantity || 1,
+            unit: pItem.unit || "un",
             estimatedPrice:
               pItem.actualPrice > 0 ? pItem.actualPrice : pItem.estimatedPrice, // Use last actual price as new estimate
             actualPrice: 0,
@@ -323,20 +333,54 @@ export default function MarketListPage() {
                 className="rounded-xl"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Preço Esperado/Previsto (R$)</Label>
-              <Input
-                type="number"
-                value={newItem.estimatedPrice || ""}
-                onChange={(e) =>
-                  setNewItem({
-                    ...newItem,
-                    estimatedPrice: parseFloat(e.target.value),
-                  })
-                }
-                placeholder="0.00"
-                className="rounded-xl"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Quantidade</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    value={newItem.quantity || ""}
+                    onChange={(e) =>
+                      setNewItem({
+                        ...newItem,
+                        quantity: parseFloat(e.target.value),
+                      })
+                    }
+                    className="rounded-xl flex-1"
+                    min="0"
+                    step="0.01"
+                  />
+                  <select
+                    className="flex h-10 w-[60px] rounded-xl border border-slate-200 bg-white px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2"
+                    value={newItem.unit || "un"}
+                    onChange={(e) =>
+                      setNewItem({ ...newItem, unit: e.target.value })
+                    }
+                  >
+                    <option value="un">un</option>
+                    <option value="kg">kg</option>
+                    <option value="g">g</option>
+                    <option value="L">L</option>
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Preço Un. Previsto (R$)</Label>
+                <Input
+                  type="number"
+                  value={newItem.estimatedPrice || ""}
+                  onChange={(e) =>
+                    setNewItem({
+                      ...newItem,
+                      estimatedPrice: parseFloat(e.target.value),
+                    })
+                  }
+                  placeholder="0.00"
+                  className="rounded-xl"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -368,9 +412,40 @@ export default function MarketListPage() {
                   className="rounded-xl"
                 />
               </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Previsto (R$)</Label>
+                  <Label>Quantidade</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      value={editingItem.quantity || ""}
+                      onChange={(e) =>
+                        setEditingItem({
+                          ...editingItem,
+                          quantity: parseFloat(e.target.value),
+                        })
+                      }
+                      className="rounded-xl flex-1"
+                      min="0"
+                      step="0.01"
+                    />
+                    <select
+                      className="flex h-10 w-[60px] rounded-xl border border-slate-200 bg-white px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2"
+                      value={editingItem.unit || "un"}
+                      onChange={(e) =>
+                        setEditingItem({ ...editingItem, unit: e.target.value })
+                      }
+                    >
+                      <option value="un">un</option>
+                      <option value="kg">kg</option>
+                      <option value="g">g</option>
+                      <option value="L">L</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Previsto Un. (R$)</Label>
                   <Input
                     type="number"
                     value={editingItem.estimatedPrice || ""}
@@ -381,10 +456,12 @@ export default function MarketListPage() {
                       })
                     }
                     className="rounded-xl"
+                    min="0"
+                    step="0.01"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Preço Pago (R$)</Label>
+                <div className="space-y-2 col-span-2">
+                  <Label>Preço Pago Un. (R$)</Label>
                   <Input
                     type="number"
                     value={editingItem.actualPrice || ""}
@@ -395,6 +472,8 @@ export default function MarketListPage() {
                       })
                     }
                     className="rounded-xl"
+                    min="0"
+                    step="0.01"
                   />
                 </div>
               </div>
@@ -437,6 +516,14 @@ function MarketListItem({
     setLocalPrice(item.actualPrice?.toString() || "");
   }, [item.actualPrice]);
 
+  const qty = Number(item.quantity) || 1;
+  const unit = item.unit || "un";
+  const itemTotal =
+    qty *
+    (item.purchased
+      ? Number(item.actualPrice) || 0
+      : Number(item.estimatedPrice) || 0);
+
   return (
     <div
       className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-4 rounded-[20px] border transition-all ${item.purchased ? "bg-slate-50 border-slate-200 opacity-80" : "bg-white border-slate-200 shadow-sm"}`}
@@ -452,25 +539,25 @@ function MarketListItem({
           <p
             className={`font-semibold text-slate-800 text-lg leading-tight ${item.purchased ? "line-through text-slate-500" : ""}`}
           >
-            {item.name}
+            {qty}x {item.name} {unit !== "un" ? `(${qty} ${unit})` : ""}
           </p>
-          <div className="flex gap-4 mt-1">
-            <p className="text-xs text-slate-500 font-medium">
+          <div className="flex gap-3 mt-1.5 flex-wrap">
+            <p className="text-[11px] text-slate-500 font-medium px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded-md">
               Previsto:{" "}
-              <span className="text-slate-700">
-                {formatCurrency(item.estimatedPrice)}
+              <span className="text-slate-700 dark:text-slate-300">
+                {formatCurrency(item.estimatedPrice)}/{unit}
               </span>
             </p>
             {item.previousPrice !== undefined && item.previousPrice > 0 && (
-              <p className="text-xs text-blue-500 font-medium flex items-center gap-1">
-                Mês passado: {formatCurrency(item.previousPrice)}
+              <p className="text-[11px] text-blue-500 font-medium flex items-center gap-1 px-2 py-0.5 bg-blue-50 dark:bg-blue-500/10 rounded-md">
+                Mês passado: {formatCurrency(item.previousPrice)}/{unit}
                 {item.actualPrice && item.actualPrice > item.previousPrice ? (
-                  <span className="text-rose-500 text-[10px] bg-rose-50 px-1 rounded">
+                  <span className="text-rose-500 text-[10px] bg-rose-100 dark:bg-rose-500/20 px-1 rounded-sm">
                     ▲
                   </span>
                 ) : item.actualPrice &&
                   item.actualPrice < item.previousPrice ? (
-                  <span className="text-emerald-500 text-[10px] bg-emerald-50 px-1 rounded">
+                  <span className="text-emerald-500 text-[10px] bg-emerald-100 dark:bg-emerald-500/20 px-1 rounded-sm">
                     ▼
                   </span>
                 ) : null}
@@ -480,37 +567,54 @@ function MarketListItem({
         </div>
       </div>
 
-      <div className="flex items-center gap-3 w-full sm:w-auto">
-        <div className="flex items-center gap-2 flex-1 sm:flex-initial">
-          <Label className="text-xs text-slate-400 uppercase font-semibold hidden sm:block">
-            Preço Final
-          </Label>
-          <div className="relative flex-1 sm:w-28">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 font-medium">
-              R$
-            </span>
-            <Input
-              type="number"
-              className={`pl-8 rounded-xl font-mono text-sm h-10 ${item.purchased ? "bg-transparent border-slate-200" : "bg-slate-50 border-slate-200 hover:border-slate-300"}`}
-              value={localPrice}
-              onChange={(e) => setLocalPrice(e.target.value)}
-              onBlur={() => onUpdate(localPrice)}
-              placeholder="0.00"
-            />
+      <div className="flex items-center gap-3 w-full sm:w-auto mt-2 sm:mt-0">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1 sm:flex-initial">
+          <div className="flex items-center gap-2">
+            <Label className="text-[10px] text-slate-400 uppercase font-semibold hidden sm:block whitespace-nowrap tracking-wider">
+              Preço Un.
+            </Label>
+            <div className="relative w-full sm:w-28 shrink-0">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 font-medium">
+                R$
+              </span>
+              <Input
+                type="number"
+                className={`pl-8 rounded-xl font-mono text-sm h-10 shadow-sm ${item.purchased ? "bg-transparent border-slate-200" : "bg-white border-slate-200 hover:border-slate-300 focus:border-slate-400 focus:ring-slate-400"}`}
+                value={localPrice}
+                onChange={(e) => setLocalPrice(e.target.value)}
+                onBlur={() => onUpdate(localPrice)}
+                placeholder="0.00"
+                step="0.01"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-2 justify-end">
+            <div
+              className={`px-4 py-1.5 rounded-xl whitespace-nowrap min-w-[90px] text-right shadow-sm border ${item.purchased ? "bg-emerald-50 border-emerald-100 text-emerald-800" : "bg-slate-50 border-slate-100 text-slate-700"}`}
+            >
+              <span className="text-[9px] uppercase font-bold block opacity-60 mb-[1px] tracking-widest">
+                Total
+              </span>
+              <span className="text-sm font-bold tracking-tight">
+                {formatCurrency(itemTotal)}
+              </span>
+            </div>
           </div>
         </div>
-        <button
-          onClick={onEdit}
-          className="text-slate-400 hover:text-slate-600 p-2 shrink-0"
-        >
-          <Pencil className="w-4 h-4" />
-        </button>
-        <button
-          onClick={onRemove}
-          className="text-rose-400 hover:text-rose-600 p-2 shrink-0"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-1 sm:ml-2">
+          <button
+            onClick={onEdit}
+            className="text-slate-400 hover:text-slate-600 p-2 shrink-0 transition-colors bg-white rounded-full hover:bg-slate-50 shadow-sm"
+          >
+            <Pencil className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onRemove}
+            className="text-rose-400 hover:text-rose-600 p-2 shrink-0 transition-colors bg-white rounded-full hover:bg-rose-50 shadow-sm"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </div>
   );

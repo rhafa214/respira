@@ -203,7 +203,7 @@ export function TransactionStack({
                             particleCount: 100,
                             spread: 70,
                             origin: { y: 0.6 },
-                            colors: ['#10b981', '#34d399', '#fef08a'] // Emerald and some gold
+                            colors: ["#10b981", "#34d399", "#fef08a"], // Emerald and some gold
                           });
                         } catch (e) {}
                         onMarkAsPaid(tx.id);
@@ -221,7 +221,14 @@ export function TransactionStack({
                           : "text-orange-500 bg-orange-50 dark:text-orange-400 dark:bg-orange-500/20"
                       }`}
                     >
-                      {isOverdue ? "Atrasado" : "Pendente"}
+                      {isOverdue
+                        ? new Date(tx.date + "T12:00:00").getMonth() <
+                            new Date().getMonth() ||
+                          new Date(tx.date + "T12:00:00").getFullYear() <
+                            new Date().getFullYear()
+                          ? `Atrasada de ${new Date(tx.date + "T12:00:00").toLocaleDateString("pt-BR", { month: "short" })}`
+                          : "Atrasado"
+                        : "Pendente"}
                     </span>
                   )}
                 </div>
