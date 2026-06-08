@@ -217,10 +217,13 @@ export default function ExpensesPage() {
           const newDate = new Date(pf.date + "T12:00:00");
           newDate.setMonth(currentDate.getMonth());
           newDate.setFullYear(currentDate.getFullYear());
+          
+          const isUtility = pf.description?.toLowerCase().match(/\b(água|agua|luz|energia|enel|sabesp|sanepar|copasa|cemig|copel|celesc|light)\b/);
+          const newAmount = isUtility ? 0 : ((pf as any).originalFixedAmount || pf.amount);
 
           await add({
             description: pf.description,
-            amount: (pf as any).originalFixedAmount || pf.amount,
+            amount: newAmount,
             category: pf.category,
             type: pf.type,
             date: format(newDate, "yyyy-MM-dd"),
@@ -343,7 +346,7 @@ export default function ExpensesPage() {
   const handleEdit = async () => {
     if (!editTx || !editTx.id) return;
     setSaving(true);
-    const { id, ...data } = editTx;
+    const { id, createdAt, userId, updatedAt, ...data } = editTx as any;
     await update(id, data);
     setSaving(false);
     setEditDialog(false);
@@ -364,12 +367,12 @@ export default function ExpensesPage() {
     }
 
     setSaving(true);
-    const { id, ...originalData } = editTx;
+    const { id, createdAt, userId, updatedAt, ...originalData } = editTx as any;
 
     // 1. Update the original transaction to reduce its amount
     const remainingAmount = (originalData.amount || 0) - partialAmt;
     const originalFixedAmt =
-      (originalData as any).originalFixedAmount || originalData.amount;
+      originalData.originalFixedAmount || originalData.amount;
 
     await update(id, {
       ...originalData,
@@ -380,6 +383,8 @@ export default function ExpensesPage() {
     // 2. Create a new transaction for the paid amount
     await add({
       ...originalData,
+      createdAt,
+      userId,
       amount: partialAmt,
       status: "paid",
       description: `${originalData.description} (Parcial)`,

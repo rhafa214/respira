@@ -57,7 +57,8 @@ export default function DebtsPage() {
   const handleEdit = async () => {
     if (!editDebt || !editDebt.id) return;
     setSavingEdit(true);
-    await update(editDebt.id, editDebt);
+    const { id, createdAt, userId, updatedAt, ...debtData } = editDebt as any;
+    await update(id, debtData);
     setSavingEdit(false);
     setEditDialog(false);
     setEditDebt(null);

@@ -126,7 +126,7 @@ service cloud.firestore {
       allow get: if isValidId(transactionId) && isOwner(existing().userId);
       allow list: if isVerifiedUser();
       allow create: if isVerifiedUser() && isValidTransactionCreate(incoming());
-      allow update: if isValidId(transactionId) && isOwner(existing().userId) && isValidTransactionUpdate(incoming(), existing()) && incoming().diff(existing()).affectedKeys().hasOnly(['amount', 'category', 'date', 'type', 'description', 'status', 'isRecurring', 'isFixed', 'loanId', 'installmentInfo', 'updatedAt', 'originalFixedAmount']);
+      allow update: if isValidId(transactionId) && isOwner(existing().userId) && isValidTransactionUpdate(incoming(), existing());
       allow delete: if isValidId(transactionId) && isOwner(existing().userId);
     }
     

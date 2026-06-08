@@ -9,6 +9,7 @@ import {
   isSameMonth,
   parseISO,
   isPast,
+  differenceInDays,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
@@ -43,6 +44,9 @@ import {
   Bot,
   Wallet,
   Bell,
+  Droplet,
+  Zap,
+  AlertOctagon,
 } from "lucide-react";
 
 import { useCollection } from "@/hooks/useFirestore";
@@ -407,6 +411,9 @@ export default function DashboardPage() {
     date: "",
   });
 
+  const [editingUtility, setEditingUtility] = useState<any>(null);
+  const [utilityAmount, setUtilityAmount] = useState<string>("");
+
   const handleSaveSalary = async () => {
     if (!salaryConfigForm.amount || !salaryConfigForm.date) return;
 
@@ -541,6 +548,42 @@ export default function DashboardPage() {
     );
   }
 
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+  const utilityBills =
+    allTransactions
+      ?.filter((t: any) => {
+        if (t.type !== "expense" && t.type !== "deduction") return false;
+
+        const desc = t.description?.toLowerCase() || "";
+        // Match common utility names
+        const isUtility = desc.match(
+          /\b(água|agua|luz|energia|enel|sabesp|sanepar|copasa|cemig|copel|celesc|light)\b/,
+        );
+
+        // Only monitor pending ones, or ones that were just recently paid (this month)
+        if (!isUtility) return false;
+        
+        if (t.status === "paid") {
+           // If paid, only show it if it belongs to the currently viewed month
+           const currentMonthStr = format(currentDate, "yyyy-MM");
+           const txMonth = t.date ? t.date.substring(0, 7) : "";
+           return txMonth === currentMonthStr;
+        }
+
+        // If pending, always show it until paid
+        return true;
+      })
+      .map((t: any) => {
+        const daysLate = (t.status === "pending" && t.date < todayStr) ? differenceInDays(new Date(), parseISO(t.date)) : 0;
+        return { ...t, daysLate };
+      })
+      .sort((a: any, b: any) => {
+        if (a.status !== b.status) {
+           return a.status === "pending" ? -1 : 1;
+        }
+        return b.daysLate - a.daysLate;
+      }) || [];
+
   const aiInsights = () => {
     if (realBalance < 0) {
       return "Seu orçamento está extremamente comprometido. O foco atual é estabilidade financeira. Evite novas dívidas ou parcelamentos a todo custo.";
@@ -650,6 +693,42 @@ export default function DashboardPage() {
                   className="w-full rounded-2xl bg-slate-900 text-white hover:bg-slate-800"
                 >
                   Registrar Previsão
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={!!editingUtility} onOpenChange={(open) => !open && setEditingUtility(null)}>
+            <DialogContent className="rounded-[2rem]">
+              <DialogHeader>
+                <DialogTitle>Mês Atual</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <p className="text-sm text-slate-600">
+                  Informe o valor para <strong>{editingUtility?.description}</strong>
+                </p>
+                <div className="space-y-2">
+                  <Label>Valor da Conta (R$)</Label>
+                  <Input
+                    type="number"
+                    placeholder="Ex: 150.00"
+                    value={utilityAmount}
+                    onChange={(e) => setUtilityAmount(e.target.value)}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  onClick={async () => {
+                    if (editingUtility && utilityAmount) {
+                      await updateTx(editingUtility.id, { amount: parseFloat(utilityAmount) });
+                      setEditingUtility(null);
+                      setUtilityAmount("");
+                    }
+                  }}
+                  className="w-full rounded-2xl bg-slate-900 text-white hover:bg-slate-800"
+                >
+                  Salvar Valor
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -861,6 +940,113 @@ export default function DashboardPage() {
         {/* Gamification */}
         <div className="col-span-1 md:col-span-2 lg:col-span-2">
           <GamificationWidget />
+        </div>
+
+        {/* Serviços Essenciais */}
+        <div className="col-span-1 md:col-span-2 lg:col-span-4 space-y-4">
+          <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <AlertOctagon className="w-5 h-5 text-rose-500" />
+            Monitoramento de Serviços Essenciais
+          </h3>
+          {utilityBills.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {utilityBills.map((util: any) => {
+                const isWater = util.description
+                  .toLowerCase()
+                  .match(/\b(água|agua|sabesp|sanepar|copasa)\b/);
+                const isEnergy = util.description
+                  .toLowerCase()
+                  .match(/\b(luz|energia|enel|cemig|copel|celesc|light)\b/);
+                const Icon = isWater ? Droplet : Zap;
+                
+                const isPaid = util.status === "paid";
+                
+                const iconColor = isPaid ? "text-emerald-500" : isWater ? "text-cyan-500" : "text-yellow-500";
+                const iconBg = isPaid ? "bg-emerald-100" : isWater ? "bg-cyan-100" : "bg-yellow-100";
+
+                const severeRisk = util.status === "pending" && util.daysLate >= 30;
+                
+                let borderStyle = isPaid ? "bg-[#f0fdf4] border-emerald-100" : "bg-white border-slate-200";
+                if (severeRisk) {
+                  borderStyle = "bg-rose-50 border-rose-200";
+                } else if (!isPaid && util.daysLate > 0) {
+                  borderStyle = "bg-orange-50 border-orange-200";
+                }
+
+                return (
+                  <div
+                    key={util.id}
+                    className={`p-4 rounded-3xl border ${borderStyle} flex items-center gap-4 relative overflow-hidden group`}
+                  >
+                    <div
+                      className={`${iconBg} p-3 rounded-2xl ${iconColor} shrink-0`}
+                    >
+                      <Icon className="w-6 h-6" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-bold text-slate-800 line-clamp-1">{util.description}</p>
+                      
+                      {isPaid ? (
+                        <p className="text-sm font-medium text-emerald-600 flex items-center gap-1">
+                          <CheckCircle2 className="w-4 h-4" /> Em dia
+                        </p>
+                      ) : util.daysLate > 0 ? (
+                        <p className={`text-sm font-medium ${severeRisk ? "text-rose-600" : "text-orange-600"}`}>
+                          Atrasada há {util.daysLate} dias
+                        </p>
+                      ) : (
+                        <p className="text-sm font-medium text-slate-500">
+                          Pendente ({format(parseISO(util.date), "dd/MM")})
+                        </p>
+                      )}
+                      
+                      <p 
+                        className={`text-sm font-bold ${isPaid ? "text-emerald-700" : "text-slate-900"} mt-1 ${!isPaid ? 'cursor-pointer hover:text-slate-600 underline decoration-slate-300 underline-offset-2' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!isPaid) {
+                            setEditingUtility(util);
+                            setUtilityAmount(util.amount?.toString() || "");
+                          }
+                        }}
+                        title={!isPaid ? "Clique para alterar o valor" : ""}
+                      >
+                        {util.amount > 0 ? formatCurrency(util.amount) : "Definir Valor"}
+                      </p>
+                    </div>
+                    {severeRisk && (
+                      <div className="absolute top-4 right-4 bg-rose-600 text-white text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full shadow-sm animate-pulse pointer-events-none">
+                        Risco de Corte
+                      </div>
+                    )}
+                    
+                    {!isPaid && util.amount > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMarkAsPaid(util.id);
+                        }}
+                        className="ml-auto flex-shrink-0 w-10 h-10 rounded-full hover:bg-emerald-100 hover:text-emerald-600 text-slate-400 mt-4 md:mt-0 z-10"
+                        title="Marcar como paga"
+                      >
+                        <CheckCircle2 className="w-6 h-6" />
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="p-6 rounded-3xl border border-dashed border-slate-300 bg-slate-50 text-center flex flex-col items-center justify-center space-y-2 text-slate-500">
+               <div className="bg-slate-200/50 p-4 rounded-full mb-2">
+                 <AlertOctagon className="w-8 h-8 text-slate-400" />
+               </div>
+               <p className="font-medium text-slate-700">Nenhuma conta de consumo rastreada</p>
+               <p className="text-sm max-w-[400px]">Crie uma despesa e inclua palavras como <span className="font-bold">Água</span>, <span className="font-bold">Luz</span>, ou <span className="font-bold">Energia</span> no nome para ativar o monitoramento inteligente contra cortes.</p>
+            </div>
+          )}
         </div>
 
         {/* Dívidas Consolidadas */}

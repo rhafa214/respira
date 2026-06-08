@@ -46,7 +46,8 @@ export function SeedDataAlert() {
 
       // Despesas fixas / essenciais
       await addTx({ description: "Aluguel", amount: 1500, category: "Moradia", type: "expense", date: d, status: "pending", isRecurring: true });
-      await addTx({ description: "Água e luz", amount: 500, category: "Moradia", type: "expense", date: d, status: "pending", isRecurring: true });
+      await addTx({ description: "Conta de Água", amount: 0, category: "Moradia", type: "expense", date: d, status: "pending", isRecurring: true });
+      await addTx({ description: "Conta de Luz", amount: 0, category: "Moradia", type: "expense", date: d, status: "pending", isRecurring: true });
       await addTx({ description: "Internet", amount: 100, category: "Moradia", type: "expense", date: d, status: "pending", isRecurring: true });
       await addTx({ description: "Compra mensal", amount: 1000, category: "Alimentação", type: "expense", date: d, status: "pending", isRecurring: true });
       await addTx({ description: "Combustível", amount: 350, category: "Transporte", type: "expense", date: d, status: "pending", isRecurring: true });
