@@ -153,6 +153,8 @@ export default function ExpensesPage() {
   const [editDialog, setEditDialog] = useState(false);
   const [editTx, setEditTx] = useState<Partial<Transaction> | null>(null);
   const [saving, setSaving] = useState(false);
+  const [isPartialPaymentMode, setIsPartialPaymentMode] = useState(false);
+  const [partialPaymentAmount, setPartialPaymentAmount] = useState<string>("");
 
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -198,7 +200,7 @@ export default function ExpensesPage() {
 
           await add({
             description: pf.description,
-            amount: pf.amount,
+            amount: (pf as any).originalFixedAmount || pf.amount,
             category: pf.category,
             type: pf.type,
             date: format(newDate, "yyyy-MM-dd"),
@@ -326,6 +328,50 @@ export default function ExpensesPage() {
     setSaving(false);
     setEditDialog(false);
     setEditTx(null);
+    setIsPartialPaymentMode(false);
+    setPartialPaymentAmount("");
+  };
+
+  const handlePartialPayment = async () => {
+    if (!editTx || !editTx.id || !partialPaymentAmount) return;
+    const partialAmt = parseFloat(partialPaymentAmount);
+    if (isNaN(partialAmt) || partialAmt <= 0) return;
+    if (partialAmt >= (editTx.amount || 0)) {
+      // If paying full amount or more, just pay it
+      setEditTx({ ...editTx, status: "paid" });
+      await handleEdit();
+      return;
+    }
+
+    setSaving(true);
+    const { id, ...originalData } = editTx;
+
+    // 1. Update the original transaction to reduce its amount
+    const remainingAmount = (originalData.amount || 0) - partialAmt;
+    const originalFixedAmt =
+      (originalData as any).originalFixedAmount || originalData.amount;
+
+    await update(id, {
+      ...originalData,
+      amount: remainingAmount,
+      originalFixedAmount: originalFixedAmt,
+    });
+
+    // 2. Create a new transaction for the paid amount
+    await add({
+      ...originalData,
+      amount: partialAmt,
+      status: "paid",
+      description: `${originalData.description} (Parcial)`,
+      isFixed: false, // Don't duplicate the fixed tag
+      isRecurring: false,
+    } as Omit<Transaction, "id" | "userId" | "createdAt" | "updatedAt">);
+
+    setSaving(false);
+    setEditDialog(false);
+    setEditTx(null);
+    setIsPartialPaymentMode(false);
+    setPartialPaymentAmount("");
   };
 
   const handleDelete = async () => {
@@ -335,6 +381,8 @@ export default function ExpensesPage() {
     setSaving(false);
     setEditDialog(false);
     setEditTx(null);
+    setIsPartialPaymentMode(false);
+    setPartialPaymentAmount("");
   };
 
   const formatCurrency = (val: number) => {
@@ -829,6 +877,54 @@ export default function ExpensesPage() {
                   Lançamento Fixo (Mês a Mês)
                 </Label>
               </div>
+
+              {editTx.type !== "income" && editTx.status === "pending" && (
+                <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                  {!isPartialPaymentMode ? (
+                    <Button
+                      variant="outline"
+                      className="w-full text-indigo-600 border-indigo-100 hover:bg-indigo-50"
+                      onClick={() => setIsPartialPaymentMode(true)}
+                    >
+                      Realizar Pagamento Parcial
+                    </Button>
+                  ) : (
+                    <div className="space-y-3 bg-indigo-50 dark:bg-indigo-500/10 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-500/20">
+                      <Label className="text-indigo-900 dark:text-indigo-300">
+                        Valor pago agora (R$)
+                      </Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="number"
+                          value={partialPaymentAmount}
+                          onChange={(e) =>
+                            setPartialPaymentAmount(e.target.value)
+                          }
+                          placeholder="Ex: 50.00"
+                          className="bg-white"
+                        />
+                        <Button
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                          onClick={handlePartialPayment}
+                          disabled={saving || !partialPaymentAmount}
+                        >
+                          Confirmar
+                        </Button>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        className="w-full text-xs text-indigo-600/70 hover:text-indigo-700 hover:bg-indigo-100/50"
+                        onClick={() => {
+                          setIsPartialPaymentMode(false);
+                          setPartialPaymentAmount("");
+                        }}
+                      >
+                        Cancelar pagamento parcial
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
           <DialogFooter>

@@ -210,7 +210,7 @@ export default function DashboardPage() {
         } else {
           variableTotal += amt;
         }
-        
+
         if (t.status === "paid") {
           expPaid += amt;
         } else {
@@ -485,7 +485,7 @@ export default function DashboardPage() {
 
           await addTx({
             description: pf.description,
-            amount: pf.amount,
+            amount: (pf as any).originalFixedAmount || pf.amount,
             category: pf.category,
             type: pf.type,
             date: format(newDate, "yyyy-MM-dd"),
@@ -699,12 +699,20 @@ export default function DashboardPage() {
               Saldo em Conta
             </div>
           </div>
-          <p className={`text-3xl lg:text-4xl font-bold tracking-tight ${realBalance >= 0 ? "text-white" : "text-slate-800 dark:text-slate-50"} relative z-10`}>
+          <p
+            className={`text-3xl lg:text-4xl font-bold tracking-tight ${realBalance >= 0 ? "text-white" : "text-slate-800 dark:text-slate-50"} relative z-10`}
+          >
             {formatCurrency(realBalance)}
           </p>
-          <p className={`text-xs ${realBalance >= 0 ? "text-slate-400" : "text-slate-500 dark:text-slate-400"} font-medium mt-1 relative z-10`}>
+          <p
+            className={`text-xs ${realBalance >= 0 ? "text-slate-400" : "text-slate-500 dark:text-slate-400"} font-medium mt-1 relative z-10`}
+          >
             Estimativa livre ao final do mês:{" "}
-            <span className={`font-bold ${realBalance >= 0 ? "text-emerald-400" : "text-slate-700 dark:text-slate-300"}`}>{formatCurrency(expectedEndMonthBalance)}</span>
+            <span
+              className={`font-bold ${realBalance >= 0 ? "text-emerald-400" : "text-slate-700 dark:text-slate-300"}`}
+            >
+              {formatCurrency(expectedEndMonthBalance)}
+            </span>
           </p>
         </div>
 
@@ -764,11 +772,11 @@ export default function DashboardPage() {
             Fluxo de Caixa
           </h3>
           <div className="flex-1 min-h-[250px]">
-            <WaterfallChart 
-              income={grossIncome} 
-              fixedExpenses={fixedTotal} 
-              variableExpenses={variableTotal} 
-              remaining={realBalance} 
+            <WaterfallChart
+              income={grossIncome}
+              fixedExpenses={fixedTotal}
+              variableExpenses={variableTotal}
+              remaining={realBalance}
             />
           </div>
         </div>
