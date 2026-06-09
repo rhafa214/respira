@@ -217,9 +217,15 @@ export default function ExpensesPage() {
           const newDate = new Date(pf.date + "T12:00:00");
           newDate.setMonth(currentDate.getMonth());
           newDate.setFullYear(currentDate.getFullYear());
-          
-          const isUtility = pf.description?.toLowerCase().match(/\b(água|agua|luz|energia|enel|sabesp|sanepar|copasa|cemig|copel|celesc|light)\b/);
-          const newAmount = isUtility ? 0 : ((pf as any).originalFixedAmount || pf.amount);
+
+          const isUtility = pf.description
+            ?.toLowerCase()
+            .match(
+              /(água|agua|luz|energia|enel|sabesp|sanepar|copasa|cemig|copel|celesc|light)/,
+            );
+          const newAmount = isUtility
+            ? 0
+            : (pf as any).originalFixedAmount || pf.amount;
 
           await add({
             description: pf.description,
@@ -269,6 +275,42 @@ export default function ExpensesPage() {
 
     cleanup();
   }, [allTransactions, remove, update]);
+
+  useEffect(() => {
+    // One-off data cleanup requested by user for "Água e luz"
+    if (!allTransactions || localStorage.getItem("aguaLuzSplitDone_v2")) return;
+
+    const splitAguaLuz = async () => {
+      const aguaLuzTxs = allTransactions.filter(
+        (t) => t.description === "Água e luz",
+      );
+
+      if (aguaLuzTxs.length > 0) {
+        for (const tx of aguaLuzTxs) {
+          if (!tx.id) continue;
+
+          // Rename original to "Conta de Água" and zero out if pending
+          const newAmount = tx.status === "pending" ? 0 : tx.amount;
+          await update(tx.id, {
+            description: "Conta de Água",
+            amount: newAmount,
+          });
+
+          // Create matching "Conta de Luz"
+          await add({
+            ...tx,
+            description: "Conta de Luz",
+            amount: 0,
+            status: tx.status,
+          } as any);
+        }
+      }
+
+      localStorage.setItem("aguaLuzSplitDone_v2", "true");
+    };
+
+    splitAguaLuz();
+  }, [allTransactions, remove, update, add]);
 
   const handlePrevMonth = () => {
     const prev = new Date(currentDate);

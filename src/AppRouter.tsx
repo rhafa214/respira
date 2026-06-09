@@ -11,7 +11,7 @@ import WishlistPage from "@/pages/WishlistPage";
 import AssistantPage from "@/pages/AssistantPage";
 import BudgetPage from "@/pages/BudgetPage";
 import MarketListPage from "@/pages/MarketListPage";
-import FamilyPage from "@/pages/FamilyPage";
+import JourneyPage from "@/pages/JourneyPage";
 import { AuthProvider, useAuth } from "@/components/AuthProvider";
 import { ChatProvider } from "@/components/ChatContext";
 import { MonthProvider } from "@/components/MonthContext";
@@ -179,11 +179,11 @@ export function AppRouter() {
                 }
               />
               <Route
-                path="/app/familia"
+                path="/app/jornada"
                 element={
                   <ProtectedRoute>
                     <AppLayout>
-                      <FamilyPage />
+                      <JourneyPage />
                     </AppLayout>
                   </ProtectedRoute>
                 }

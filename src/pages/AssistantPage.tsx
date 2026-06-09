@@ -30,6 +30,7 @@ import {
   Phone,
   PhoneOff,
   Trash2,
+  Target,
 } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";

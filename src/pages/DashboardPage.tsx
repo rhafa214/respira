@@ -53,7 +53,7 @@ import { useCollection } from "@/hooks/useFirestore";
 import { useAuth } from "@/components/AuthProvider";
 import { SeedDataAlert } from "@/components/SeedDataAlert";
 import { TransactionStack } from "@/components/TransactionStack";
-import { GamificationWidget } from "@/components/GamificationWidget";
+import { MonthlyContextWidget } from "@/components/MonthlyContextWidget";
 import { WaterfallChart } from "@/components/WaterfallChart";
 import {
   BarChart,
@@ -557,29 +557,36 @@ export default function DashboardPage() {
         const desc = t.description?.toLowerCase() || "";
         // Match common utility names
         const isUtility = desc.match(
-          /\b(água|agua|luz|energia|enel|sabesp|sanepar|copasa|cemig|copel|celesc|light)\b/,
+          /(água|agua|luz|energia|enel|sabesp|sanepar|copasa|cemig|copel|celesc|light)/,
         );
 
         // Only monitor pending ones, or ones that were just recently paid (this month)
         if (!isUtility) return false;
-        
+
+        const currentMonthStr = format(currentDate, "yyyy-MM");
+        const txMonth = t.date ? t.date.substring(0, 7) : "";
+
         if (t.status === "paid") {
-           // If paid, only show it if it belongs to the currently viewed month
-           const currentMonthStr = format(currentDate, "yyyy-MM");
-           const txMonth = t.date ? t.date.substring(0, 7) : "";
-           return txMonth === currentMonthStr;
+          // If paid, only show it if it belongs to the currently viewed month
+          return txMonth === currentMonthStr;
         }
 
-        // If pending, always show it until paid
-        return true;
+        // If pending, show if it's from the currently viewed month OR if it is overdue (any past month)
+        if (txMonth === currentMonthStr) return true;
+        if (t.date < todayStr) return true; // Overdue
+
+        return false;
       })
       .map((t: any) => {
-        const daysLate = (t.status === "pending" && t.date < todayStr) ? differenceInDays(new Date(), parseISO(t.date)) : 0;
+        const daysLate =
+          t.status === "pending" && t.date < todayStr
+            ? differenceInDays(new Date(), parseISO(t.date))
+            : 0;
         return { ...t, daysLate };
       })
       .sort((a: any, b: any) => {
         if (a.status !== b.status) {
-           return a.status === "pending" ? -1 : 1;
+          return a.status === "pending" ? -1 : 1;
         }
         return b.daysLate - a.daysLate;
       }) || [];
@@ -698,14 +705,18 @@ export default function DashboardPage() {
             </DialogContent>
           </Dialog>
 
-          <Dialog open={!!editingUtility} onOpenChange={(open) => !open && setEditingUtility(null)}>
+          <Dialog
+            open={!!editingUtility}
+            onOpenChange={(open) => !open && setEditingUtility(null)}
+          >
             <DialogContent className="rounded-[2rem]">
               <DialogHeader>
                 <DialogTitle>Mês Atual</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <p className="text-sm text-slate-600">
-                  Informe o valor para <strong>{editingUtility?.description}</strong>
+                  Informe o valor para{" "}
+                  <strong>{editingUtility?.description}</strong>
                 </p>
                 <div className="space-y-2">
                   <Label>Valor da Conta (R$)</Label>
@@ -721,7 +732,9 @@ export default function DashboardPage() {
                 <Button
                   onClick={async () => {
                     if (editingUtility && utilityAmount) {
-                      await updateTx(editingUtility.id, { amount: parseFloat(utilityAmount) });
+                      await updateTx(editingUtility.id, {
+                        amount: parseFloat(utilityAmount),
+                      });
                       setEditingUtility(null);
                       setUtilityAmount("");
                     }
@@ -937,9 +950,9 @@ export default function DashboardPage() {
           />
         </div>
 
-        {/* Gamification */}
+        {/* Contexto do Mês (Modo Crítico) */}
         <div className="col-span-1 md:col-span-2 lg:col-span-2">
-          <GamificationWidget />
+          <MonthlyContextWidget currentDate={currentDate} />
         </div>
 
         {/* Serviços Essenciais */}
@@ -953,20 +966,31 @@ export default function DashboardPage() {
               {utilityBills.map((util: any) => {
                 const isWater = util.description
                   .toLowerCase()
-                  .match(/\b(água|agua|sabesp|sanepar|copasa)\b/);
+                  .match(/(água|agua|sabesp|sanepar|copasa)/);
                 const isEnergy = util.description
                   .toLowerCase()
-                  .match(/\b(luz|energia|enel|cemig|copel|celesc|light)\b/);
+                  .match(/(luz|energia|enel|cemig|copel|celesc|light)/);
                 const Icon = isWater ? Droplet : Zap;
-                
-                const isPaid = util.status === "paid";
-                
-                const iconColor = isPaid ? "text-emerald-500" : isWater ? "text-cyan-500" : "text-yellow-500";
-                const iconBg = isPaid ? "bg-emerald-100" : isWater ? "bg-cyan-100" : "bg-yellow-100";
 
-                const severeRisk = util.status === "pending" && util.daysLate >= 30;
-                
-                let borderStyle = isPaid ? "bg-[#f0fdf4] border-emerald-100" : "bg-white border-slate-200";
+                const isPaid = util.status === "paid";
+
+                const iconColor = isPaid
+                  ? "text-emerald-500"
+                  : isWater
+                    ? "text-cyan-500"
+                    : "text-yellow-500";
+                const iconBg = isPaid
+                  ? "bg-emerald-100"
+                  : isWater
+                    ? "bg-cyan-100"
+                    : "bg-yellow-100";
+
+                const severeRisk =
+                  util.status === "pending" && util.daysLate >= 30;
+
+                let borderStyle = isPaid
+                  ? "bg-[#f0fdf4] border-emerald-100"
+                  : "bg-white border-slate-200";
                 if (severeRisk) {
                   borderStyle = "bg-rose-50 border-rose-200";
                 } else if (!isPaid && util.daysLate > 0) {
@@ -984,14 +1008,18 @@ export default function DashboardPage() {
                       <Icon className="w-6 h-6" />
                     </div>
                     <div className="flex-1">
-                      <p className="font-bold text-slate-800 line-clamp-1">{util.description}</p>
-                      
+                      <p className="font-bold text-slate-800 line-clamp-1">
+                        {util.description}
+                      </p>
+
                       {isPaid ? (
                         <p className="text-sm font-medium text-emerald-600 flex items-center gap-1">
                           <CheckCircle2 className="w-4 h-4" /> Em dia
                         </p>
                       ) : util.daysLate > 0 ? (
-                        <p className={`text-sm font-medium ${severeRisk ? "text-rose-600" : "text-orange-600"}`}>
+                        <p
+                          className={`text-sm font-medium ${severeRisk ? "text-rose-600" : "text-orange-600"}`}
+                        >
                           Atrasada há {util.daysLate} dias
                         </p>
                       ) : (
@@ -999,9 +1027,9 @@ export default function DashboardPage() {
                           Pendente ({format(parseISO(util.date), "dd/MM")})
                         </p>
                       )}
-                      
-                      <p 
-                        className={`text-sm font-bold ${isPaid ? "text-emerald-700" : "text-slate-900"} mt-1 ${!isPaid ? 'cursor-pointer hover:text-slate-600 underline decoration-slate-300 underline-offset-2' : ''}`}
+
+                      <p
+                        className={`text-sm font-bold ${isPaid ? "text-emerald-700" : "text-slate-900"} mt-1 ${!isPaid ? "cursor-pointer hover:text-slate-600 underline decoration-slate-300 underline-offset-2" : ""}`}
                         onClick={(e) => {
                           e.stopPropagation();
                           if (!isPaid) {
@@ -1011,7 +1039,9 @@ export default function DashboardPage() {
                         }}
                         title={!isPaid ? "Clique para alterar o valor" : ""}
                       >
-                        {util.amount > 0 ? formatCurrency(util.amount) : "Definir Valor"}
+                        {util.amount > 0
+                          ? formatCurrency(util.amount)
+                          : "Definir Valor"}
                       </p>
                     </div>
                     {severeRisk && (
@@ -1019,7 +1049,7 @@ export default function DashboardPage() {
                         Risco de Corte
                       </div>
                     )}
-                    
+
                     {!isPaid && util.amount > 0 && (
                       <Button
                         variant="ghost"
@@ -1040,11 +1070,19 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="p-6 rounded-3xl border border-dashed border-slate-300 bg-slate-50 text-center flex flex-col items-center justify-center space-y-2 text-slate-500">
-               <div className="bg-slate-200/50 p-4 rounded-full mb-2">
-                 <AlertOctagon className="w-8 h-8 text-slate-400" />
-               </div>
-               <p className="font-medium text-slate-700">Nenhuma conta de consumo rastreada</p>
-               <p className="text-sm max-w-[400px]">Crie uma despesa e inclua palavras como <span className="font-bold">Água</span>, <span className="font-bold">Luz</span>, ou <span className="font-bold">Energia</span> no nome para ativar o monitoramento inteligente contra cortes.</p>
+              <div className="bg-slate-200/50 p-4 rounded-full mb-2">
+                <AlertOctagon className="w-8 h-8 text-slate-400" />
+              </div>
+              <p className="font-medium text-slate-700">
+                Nenhuma conta de consumo rastreada
+              </p>
+              <p className="text-sm max-w-[400px]">
+                Crie uma despesa e inclua palavras como{" "}
+                <span className="font-bold">Água</span>,{" "}
+                <span className="font-bold">Luz</span>, ou{" "}
+                <span className="font-bold">Energia</span> no nome para ativar o
+                monitoramento inteligente contra cortes.
+              </p>
             </div>
           )}
         </div>

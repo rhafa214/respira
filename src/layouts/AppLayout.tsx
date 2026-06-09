@@ -25,6 +25,7 @@ import {
   Search,
   HandCoins,
   Users,
+  Trophy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/AuthProvider";
@@ -34,7 +35,7 @@ import { useTheme } from "@/components/ThemeProvider";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Mês Atual", path: "/app" },
-  { icon: Users, label: "Família & Casal", path: "/app/familia" },
+  { icon: Trophy, label: "Minha Jornada", path: "/app/jornada" },
   { icon: ArrowLeftRight, label: "Lançamentos", path: "/app/lancamentos" },
   { icon: ShoppingCart, label: "Mercado", path: "/app/mercado" },
   { icon: Target, label: "Orçamentos", path: "/app/orcamento" },
